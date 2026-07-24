@@ -53,9 +53,17 @@ export function isGenerativeOperation(op: Operation): boolean {
   return generativeSet.has(op.type);
 }
 
-/** Whether this operation mutates document content (vs. reply/export/meta). */
+/** Ops handled outside the Editor Controller (client actions / overlays). */
+const NON_MUTATING = new Set<OperationType>([
+  "reply",
+  "export_document",
+  "annotate",
+  "clear_annotations",
+]);
+
+/** Whether this operation mutates the ProseMirror document. */
 export function isMutating(op: Operation): boolean {
-  return op.type !== "reply" && op.type !== "export_document";
+  return !NON_MUTATING.has(op.type);
 }
 
 /**
@@ -119,6 +127,10 @@ export function describeOperation(op: Operation): string {
       return `Restore version ${op.versionId}`;
     case "export_document":
       return `Export ${op.format.toUpperCase()}`;
+    case "annotate":
+      return `Arrow ${op.direction}${op.word ? ` under "${op.word}"` : ""}`;
+    case "clear_annotations":
+      return "Clear annotations";
     case "reply":
       return "Reply";
     default: {

@@ -3,6 +3,8 @@ import { zodToJsonSchema } from "zod-to-json-schema";
 import type { JsonValue } from "@/lib/json";
 import type { ToolDefinition } from "./providers/types";
 import {
+  AnnotateSchema,
+  ClearAnnotationsSchema,
   CreateListSchema,
   CreateTableSchema,
   DeleteContentSchema,
@@ -137,6 +139,17 @@ const REGISTRY: readonly ToolSpec[] = [
     description:
       "Restore a previously saved version of the document. Use for 'restore the previous version', 'the earlier one was better'.",
     schema: RestoreVersionSchema as unknown as OpObject,
+  },
+  {
+    name: "annotate",
+    description:
+      "Draw an ARROW anchored precisely to a word (it floats over the text, does not interrupt it). Use for 'fai una freccia sotto la parola osso', 'metti una freccia verso destra accanto a X'. Set `word` to the exact word, `direction` (down/up/left/right), `size` 'big' for 'freccia grossa', and `color` if stated.",
+    schema: AnnotateSchema as unknown as OpObject,
+  },
+  {
+    name: "clear_annotations",
+    description: "Remove all arrows/annotations. Use for 'togli le frecce'.",
+    schema: ClearAnnotationsSchema as unknown as OpObject,
   },
   {
     name: "export_document",

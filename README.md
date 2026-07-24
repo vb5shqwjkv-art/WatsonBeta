@@ -66,6 +66,8 @@ validator can never drift.
   `set_font_size` (absolute pt or relative "+2"), `create_table`, `modify_table`,
   `create_list`
 - **Generative (re-invoke the LLM):** `transform_content`, `summarize`
+- **Overlay/annotations:** `annotate` (arrow anchored pixel-precisely to a word),
+  `clear_annotations`
 - **Meta:** `undo`, `restore_version`, `export_document` (PDF/DOCX), `reply`
 
 Targets are resolved references — a `blockId`, `@selection`, or `@last` — which
@@ -184,8 +186,8 @@ Roadmap:
 - **Phase 3** — Harden the voice loop: OpenAI Realtime/Whisper provider for
   robustness, barge-in, faster endpointing.
 - **Phase 4** — Supabase Auth + move autosave/versions to the database.
-- **Phase 5** — Latency, ambiguity handling, advanced tables, free-placement
-  annotations (arrows anchored to a specific word).
+- **Phase 5** — Latency, ambiguity handling, advanced tables; more annotation
+  kinds (labels, brackets) on the free-placement overlay.
 
 ---
 

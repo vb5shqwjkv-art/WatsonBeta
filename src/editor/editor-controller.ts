@@ -153,6 +153,26 @@ export class EditorController {
     }
   }
 
+  /** Resolve a target reference to the block id it points at (for annotations). */
+  resolveBlockId(target: TargetRef): string | null {
+    switch (target.kind) {
+      case "block":
+        return findBlockById(this.editor.state.doc, target.blockId) ? target.blockId : null;
+      case "line":
+        return this.blockIdForVisualLine(target.line);
+      case "last":
+        return this.lastBlockId;
+      case "selection":
+        return blockIdAt(this.editor.state.doc, this.editor.state.selection.from);
+      case "document":
+        return null;
+      default: {
+        const _never: never = target;
+        return _never;
+      }
+    }
+  }
+
   /** The block that contains a given visual line number, if any. */
   private blockIdForVisualLine(line: number): string | null {
     const layout = this.lineLayout();
@@ -510,6 +530,11 @@ export class EditorController {
       case "export_document":
         // Export is a client action handled by the pipeline, not a mutation.
         return err(appError("unsupported", "Export is handled by the pipeline."));
+
+      case "annotate":
+      case "clear_annotations":
+        // Annotations are an overlay handled by the pipeline, not a doc edit.
+        return err(appError("unsupported", "Annotations are handled by the pipeline."));
 
       default: {
         const _never: never = op;

@@ -11,6 +11,10 @@ import {
   TurnQueue,
 } from "@/core/conversation/conversation-manager";
 import { ContextManager } from "@/core/context/context-manager";
+import {
+  AnnotationManager,
+  type Annotation,
+} from "@/core/annotations/annotation-manager";
 import { DictationPipeline } from "@/client/dictation-pipeline";
 import { WebSpeechSttProvider } from "@/speech/web-speech-stt";
 import type { SttProvider, SttSession, SttState } from "@/speech/types";
@@ -44,6 +48,7 @@ export function EditorWorkspace() {
 
   const pipelineRef = useRef<DictationPipeline | null>(null);
   const controllerRef = useRef<EditorController | null>(null);
+  const annotationsRef = useRef<AnnotationManager>(new AnnotationManager());
   const sttProviderRef = useRef<SttProvider | null>(null);
   const sessionRef = useRef<SttSession | null>(null);
   const storeRef = useRef<LocalDocumentStore>(new LocalDocumentStore());
@@ -55,6 +60,7 @@ export function EditorWorkspace() {
   const [supported, setSupported] = useState(true);
   const [saved, setSaved] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [annotations, setAnnotations] = useState<Annotation[]>([]);
 
   const handleExport = useCallback(async (format: ExportFormat) => {
     const controller = controllerRef.current;
@@ -80,17 +86,51 @@ export function EditorWorkspace() {
       title: DOCUMENT_TITLE,
     });
     controllerRef.current = controller;
+    const annotationManager = annotationsRef.current;
+
+    // Autosave content + annotations together (debounced).
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const saveDoc = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        storeRef.current.save(DOCUMENT_ID, {
+          title: DOCUMENT_TITLE,
+          content: editor.getJSON() as JsonValue,
+          annotations: annotationManager.all,
+          updatedAt: new Date().toISOString(),
+        });
+        setSaved(true);
+        window.setTimeout(() => setSaved(false), 1400);
+      }, 350);
+    };
+
     pipelineRef.current = new DictationPipeline(
       controller,
       new ConversationManager(),
       new ContextManager(),
       new TurnQueue(),
-      { onProcessingChange: setProcessing, onExport: (f) => void handleExport(f) },
+      annotationManager,
+      {
+        onProcessingChange: setProcessing,
+        onExport: (f) => void handleExport(f),
+        onAnnotationsChanged: () => {
+          setAnnotations([...annotationManager.all]);
+          saveDoc();
+        },
+      },
     );
 
     if (process.env.NODE_ENV !== "production") {
-      (window as unknown as Record<string, unknown>).__editorController =
-        controller;
+      const w = window as unknown as Record<string, unknown>;
+      w.__editorController = controller;
+      w.__annotate = (spec: Omit<Annotation, "id">) => {
+        annotationManager.add(spec);
+        setAnnotations([...annotationManager.all]);
+      };
+      w.__clearAnnotations = () => {
+        annotationManager.removeAll();
+        setAnnotations([]);
+      };
     }
 
     // Restore the autosaved document, if any.
@@ -98,25 +138,15 @@ export function EditorWorkspace() {
     if (persisted?.content) {
       editor.commands.setContent(persisted.content as JSONContent, false);
     }
+    if (persisted?.annotations) {
+      annotationManager.setAll(persisted.annotations);
+      setAnnotations([...persisted.annotations]);
+    }
 
-    // Autosave on every interaction (debounced).
-    let timer: ReturnType<typeof setTimeout> | null = null;
-    const handleUpdate = () => {
-      if (timer) clearTimeout(timer);
-      timer = setTimeout(() => {
-        storeRef.current.save(DOCUMENT_ID, {
-          title: DOCUMENT_TITLE,
-          content: editor.getJSON() as JsonValue,
-          updatedAt: new Date().toISOString(),
-        });
-        setSaved(true);
-        window.setTimeout(() => setSaved(false), 1400);
-      }, 350);
-    };
-    editor.on("update", handleUpdate);
+    editor.on("update", saveDoc);
 
     return () => {
-      editor.off("update", handleUpdate);
+      editor.off("update", saveDoc);
       if (timer) clearTimeout(timer);
     };
   }, [editor, handleExport]);
@@ -164,7 +194,7 @@ export function EditorWorkspace() {
   return (
     <div className="workspace">
       <ExportMenu onExport={handleExport} busy={exporting} />
-      <DocumentSheet editor={editor} />
+      <DocumentSheet editor={editor} annotations={annotations} />
       <MicButton
         on={micOn}
         supported={supported}

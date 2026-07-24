@@ -21,6 +21,7 @@ export const IdPrefix = {
   Version: "ver",
   Message: "msg",
   Document: "doc",
+  Annotation: "ann",
 } as const;
 
 export type IdPrefix = (typeof IdPrefix)[keyof typeof IdPrefix];
@@ -38,6 +39,7 @@ export const newCheckpointId = () => createId(IdPrefix.Checkpoint);
 export const newVersionId = () => createId(IdPrefix.Version);
 export const newMessageId = () => createId(IdPrefix.Message);
 export const newDocumentId = () => createId(IdPrefix.Document);
+export const newAnnotationId = () => createId(IdPrefix.Annotation);
 
 /** Whether a string looks like an id of the given prefix. */
 export function isId(value: string, prefix: IdPrefix): boolean {

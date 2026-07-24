@@ -5,6 +5,7 @@ import type {
   TurnQueue,
 } from "@/core/conversation/conversation-manager";
 import type { ContextManager } from "@/core/context/context-manager";
+import type { AnnotationManager } from "@/core/annotations/annotation-manager";
 import { parseOperation, type Operation } from "@/core/operations";
 import { requestReasoning, requestTextTransform } from "./ai-client";
 
@@ -30,8 +31,12 @@ export interface DictationHooks {
   onProcessingChange?(processing: boolean): void;
   onApplied?(result: TurnResult): void;
   onExport?(format: "pdf" | "docx"): void;
+  onAnnotationsChanged?(): void;
   onError?(message: string): void;
 }
+
+const BIG_ARROW_PX = 40;
+const NORMAL_ARROW_PX = 24;
 
 export class DictationPipeline {
   constructor(
@@ -39,6 +44,7 @@ export class DictationPipeline {
     private readonly conversation: ConversationManager,
     private readonly context: ContextManager,
     private readonly queue: TurnQueue,
+    private readonly annotations: AnnotationManager,
     private readonly hooks: DictationHooks = {},
   ) {}
 
@@ -67,12 +73,37 @@ export class DictationPipeline {
         hiddenAfter: input.hiddenAfter,
       });
 
-      // Export is a client action, not a document mutation: peel it off.
+      // Client-side / overlay ops are handled here, not by the Editor Controller.
+      let annotationsChanged = false;
       for (const op of outcome.operations) {
-        if (op.type === "export_document") this.hooks.onExport?.(op.format);
+        if (op.type === "export_document") {
+          this.hooks.onExport?.(op.format);
+        } else if (op.type === "annotate") {
+          const blockId = this.controller.resolveBlockId(op.target);
+          if (blockId) {
+            this.annotations.add({
+              kind: "arrow",
+              blockId,
+              word: op.word ?? "",
+              occurrence: op.occurrence,
+              direction: op.direction,
+              color: op.color ?? "#1a1a1a",
+              sizePx: op.size === "big" ? BIG_ARROW_PX : NORMAL_ARROW_PX,
+            });
+            annotationsChanged = true;
+          }
+        } else if (op.type === "clear_annotations") {
+          this.annotations.removeAll();
+          annotationsChanged = true;
+        }
       }
+      if (annotationsChanged) this.hooks.onAnnotationsChanged?.();
+
       const editable = outcome.operations.filter(
-        (op) => op.type !== "export_document",
+        (op) =>
+          op.type !== "export_document" &&
+          op.type !== "annotate" &&
+          op.type !== "clear_annotations",
       );
 
       const operations = await this.resolveGenerative(editable);

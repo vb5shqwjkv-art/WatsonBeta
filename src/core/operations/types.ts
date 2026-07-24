@@ -1,5 +1,7 @@
 import type { z } from "zod";
 import type {
+  AnnotateSchema,
+  ClearAnnotationsSchema,
   ContentSpecSchema,
   CreateListSchema,
   CreateTableSchema,
@@ -52,6 +54,8 @@ export type SummarizeOp = z.infer<typeof SummarizeSchema>;
 export type UndoOp = z.infer<typeof UndoSchema>;
 export type RestoreVersionOp = z.infer<typeof RestoreVersionSchema>;
 export type ExportDocumentOp = z.infer<typeof ExportDocumentSchema>;
+export type AnnotateOp = z.infer<typeof AnnotateSchema>;
+export type ClearAnnotationsOp = z.infer<typeof ClearAnnotationsSchema>;
 export type ReplyOp = z.infer<typeof ReplySchema>;
 
 /** The discriminated union of every operation. */

@@ -222,6 +222,28 @@ export const RestoreVersionSchema = z.object({
   versionId: z.string(),
 });
 
+export const AnnotateSchema = z.object({
+  type: z.literal("annotate"),
+  target: TargetRefSchema,
+  word: z
+    .string()
+    .optional()
+    .describe("The exact word to anchor the arrow to, e.g. 'osso'. Omit for the whole line."),
+  occurrence: z
+    .number()
+    .int()
+    .min(1)
+    .default(1)
+    .describe("Which occurrence of the word within the block (usually 1)."),
+  direction: z.enum(["down", "up", "left", "right"]).default("down"),
+  color: z.string().optional().describe("Arrow color as a CSS color; defaults to dark."),
+  size: z.enum(["normal", "big"]).default("normal"),
+});
+
+export const ClearAnnotationsSchema = z.object({
+  type: z.literal("clear_annotations"),
+});
+
 export const ExportDocumentSchema = z.object({
   type: z.literal("export_document"),
   format: z
@@ -251,6 +273,8 @@ export const OperationSchema = z.discriminatedUnion("type", [
   CreateListSchema,
   TransformContentSchema,
   SummarizeSchema,
+  AnnotateSchema,
+  ClearAnnotationsSchema,
   UndoSchema,
   RestoreVersionSchema,
   ExportDocumentSchema,
@@ -272,6 +296,8 @@ export const OPERATION_TYPES = [
   "create_list",
   "transform_content",
   "summarize",
+  "annotate",
+  "clear_annotations",
   "undo",
   "restore_version",
   "export_document",

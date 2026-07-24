@@ -1,4 +1,5 @@
 import type { JsonValue } from "@/lib/json";
+import type { Annotation } from "@/core/annotations/annotation-manager";
 
 /**
  * Persistence port for the document. Autosave depends on this interface, not on
@@ -8,6 +9,7 @@ import type { JsonValue } from "@/lib/json";
 export interface PersistedDocument {
   readonly title: string;
   readonly content: JsonValue;
+  readonly annotations?: readonly Annotation[];
   readonly updatedAt: string;
 }
 
