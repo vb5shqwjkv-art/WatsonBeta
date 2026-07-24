@@ -14,6 +14,7 @@ import TableCell from "@tiptap/extension-table-cell";
 import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import { BlockId } from "./extensions/block-id";
+import { FontSize } from "./extensions/font-size";
 
 export interface EditorExtensionOptions {
   placeholder?: string;
@@ -52,6 +53,7 @@ export function getEditorExtensions(
     TableCell,
     TaskList,
     TaskItem.configure({ nested: true }),
+    FontSize,
     BlockId,
   ];
 }

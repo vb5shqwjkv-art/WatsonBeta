@@ -15,6 +15,7 @@ import {
   RestoreVersionSchema,
   SetAlignmentSchema,
   SetBlockTypeSchema,
+  SetFontSizeSchema,
   SummarizeSchema,
   TransformContentSchema,
   UndoSchema,
@@ -87,6 +88,12 @@ const REGISTRY: readonly ToolSpec[] = [
     name: "set_alignment",
     description: "Set text alignment of a block (left, center, right, justify).",
     schema: SetAlignmentSchema as unknown as OpObject,
+  },
+  {
+    name: "set_font_size",
+    description:
+      "Change the FONT SIZE of the target. Use absolute points for 'carattere 14', relative points for 'più grande'/'due valori più grande' (deltaPoints: 2), or reset for 'dimensione normale'. Default text has no size mark, so say nothing to keep it normal.",
+    schema: SetFontSizeSchema as unknown as OpObject,
   },
   {
     name: "create_table",

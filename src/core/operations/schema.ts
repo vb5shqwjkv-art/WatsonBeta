@@ -152,6 +152,20 @@ export const SetAlignmentSchema = z.object({
   align: z.enum(enumValues(TextAlign)),
 });
 
+export const SetFontSizeSchema = z.object({
+  type: z.literal("set_font_size"),
+  target: TargetRefSchema,
+  size: z.discriminatedUnion("mode", [
+    z
+      .object({ mode: z.literal("absolute"), points: z.number().int().min(6).max(96) })
+      .describe("An explicit size in points, e.g. 14."),
+    z
+      .object({ mode: z.literal("relative"), deltaPoints: z.number().int().min(-40).max(40) })
+      .describe("Points relative to the normal text, e.g. +2 = 'two larger'."),
+    z.object({ mode: z.literal("reset") }).describe("Back to the normal size."),
+  ]),
+});
+
 export const CreateTableSchema = z.object({
   type: z.literal("create_table"),
   position: PositionSchema.default({ at: "cursor" }),
@@ -224,6 +238,7 @@ export const OperationSchema = z.discriminatedUnion("type", [
   FormatTextSchema,
   SetBlockTypeSchema,
   SetAlignmentSchema,
+  SetFontSizeSchema,
   CreateTableSchema,
   ModifyTableSchema,
   CreateListSchema,
@@ -243,6 +258,7 @@ export const OPERATION_TYPES = [
   "format_text",
   "set_block_type",
   "set_alignment",
+  "set_font_size",
   "create_table",
   "modify_table",
   "create_list",

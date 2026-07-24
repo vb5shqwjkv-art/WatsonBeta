@@ -61,8 +61,10 @@ generated from them (`src/core/ai/tools.ts`), so the model's contract and our
 validator can never drift.
 
 - **Structural (deterministic):** `insert_content`, `replace_content`,
-  `delete_content`, `move_content`, `format_text`, `set_block_type`,
-  `set_alignment`, `create_table`, `modify_table`, `create_list`
+  `delete_content`, `move_content`, `format_text` (bold/italic/underline/strike/
+  code/highlight/link/**color**), `set_block_type`, `set_alignment`,
+  `set_font_size` (absolute pt or relative "+2"), `create_table`, `modify_table`,
+  `create_list`
 - **Generative (re-invoke the LLM):** `transform_content`, `summarize`
 - **Meta:** `undo`, `restore_version`, `reply`
 

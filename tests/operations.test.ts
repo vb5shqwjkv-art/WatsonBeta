@@ -100,6 +100,40 @@ describe("operation classifiers", () => {
     if (table.ok) expect(describeOperation(table.value)).toBe("Create 2×3 table");
   });
 
+  it("parses absolute and relative font sizes", () => {
+    const abs = parseOperation({
+      type: "set_font_size",
+      target: { kind: "line", line: 3 },
+      size: { mode: "absolute", points: 18 },
+    });
+    expect(abs.ok).toBe(true);
+    if (abs.ok) expect(describeOperation(abs.value)).toBe("Font size 18pt");
+
+    const rel = parseOperation({
+      type: "set_font_size",
+      target: { kind: "selection" },
+      size: { mode: "relative", deltaPoints: 2 },
+    });
+    expect(rel.ok).toBe(true);
+    if (rel.ok) expect(describeOperation(rel.value)).toBe("Font size +2pt");
+
+    const reset = parseOperation({
+      type: "set_font_size",
+      target: { kind: "selection" },
+      size: { mode: "reset" },
+    });
+    expect(reset.ok).toBe(true);
+  });
+
+  it("rejects an out-of-range absolute font size", () => {
+    const r = parseOperation({
+      type: "set_font_size",
+      target: { kind: "selection" },
+      size: { mode: "absolute", points: 500 },
+    });
+    expect(r.ok).toBe(false);
+  });
+
   it("flags destructive operations for the confirmation policy", () => {
     expect(isDestructive(op({ type: "delete_content", target: { kind: "selection" } }))).toBe(true);
     expect(isDestructive(op({ type: "replace_content", target: { kind: "selection" }, content: { text: "x" } }))).toBe(true);

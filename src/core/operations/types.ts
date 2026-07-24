@@ -16,6 +16,7 @@ import type {
   RestoreVersionSchema,
   SetAlignmentSchema,
   SetBlockTypeSchema,
+  SetFontSizeSchema,
   SummarizeSchema,
   TableOpSchema,
   TargetRefSchema,
@@ -41,6 +42,7 @@ export type MoveContentOp = z.infer<typeof MoveContentSchema>;
 export type FormatTextOp = z.infer<typeof FormatTextSchema>;
 export type SetBlockTypeOp = z.infer<typeof SetBlockTypeSchema>;
 export type SetAlignmentOp = z.infer<typeof SetAlignmentSchema>;
+export type SetFontSizeOp = z.infer<typeof SetFontSizeSchema>;
 export type CreateTableOp = z.infer<typeof CreateTableSchema>;
 export type ModifyTableOp = z.infer<typeof ModifyTableSchema>;
 export type CreateListOp = z.infer<typeof CreateListSchema>;

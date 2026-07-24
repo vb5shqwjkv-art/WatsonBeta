@@ -87,6 +87,10 @@ function markAttrs(mark: MarkSpec): Record<string, unknown> {
 // following paragraph so the next utterance doesn't land inside the block.
 const TRAILING_PARAGRAPH_AFTER = new Set(["table", "horizontalRule", "image"]);
 
+// Normal document font size in points; relative sizing is computed from this
+// (kept in sync with `.ProseMirror { font-size }` in globals.css).
+const BASE_FONT_PT = 12;
+
 export class EditorController {
   private version = 0;
   private title: string;
@@ -437,6 +441,25 @@ export class EditorController {
           .setTextSelection({ from: range.value.from, to: range.value.to })
           .setTextAlign(op.align)
           .run();
+        return ok(label);
+      }
+
+      case "set_font_size": {
+        const range = this.resolveEditRange(op.target);
+        if (!range.ok) return range;
+        const chain = this.editor
+          .chain()
+          .setTextSelection({ from: range.value.from, to: range.value.to });
+        if (op.size.mode === "reset") {
+          chain.unsetFontSize();
+        } else {
+          const pt =
+            op.size.mode === "absolute"
+              ? op.size.points
+              : Math.max(6, BASE_FONT_PT + op.size.deltaPoints);
+          chain.setFontSize(`${pt}pt`);
+        }
+        chain.run();
         return ok(label);
       }
 

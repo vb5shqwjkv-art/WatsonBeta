@@ -97,6 +97,12 @@ export function describeOperation(op: Operation): string {
       return `Set block type → ${op.blockType}`;
     case "set_alignment":
       return `Align ${op.align}`;
+    case "set_font_size":
+      return op.size.mode === "absolute"
+        ? `Font size ${op.size.points}pt`
+        : op.size.mode === "relative"
+          ? `Font size ${op.size.deltaPoints >= 0 ? "+" : ""}${op.size.deltaPoints}pt`
+          : "Font size reset";
     case "create_table":
       return `Create ${op.rows}×${op.cols} table`;
     case "modify_table":

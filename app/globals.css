@@ -103,7 +103,8 @@ body {
 /* ─────────────────────── Document content (Tiptap) ─────────────────── */
 .ProseMirror {
   outline: none;
-  font-size: 1.06rem;
+  /* 12pt normal text; relative font-size commands are computed from this. */
+  font-size: 12pt;
   line-height: 1.7;
   color: #1a1a1a;
   -webkit-font-smoothing: antialiased;
