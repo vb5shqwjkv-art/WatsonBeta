@@ -4,6 +4,7 @@ import type {
   CreateListSchema,
   CreateTableSchema,
   DeleteContentSchema,
+  ExportDocumentSchema,
   FormatTextSchema,
   InsertContentSchema,
   MarkSpecSchema,
@@ -50,6 +51,7 @@ export type TransformContentOp = z.infer<typeof TransformContentSchema>;
 export type SummarizeOp = z.infer<typeof SummarizeSchema>;
 export type UndoOp = z.infer<typeof UndoSchema>;
 export type RestoreVersionOp = z.infer<typeof RestoreVersionSchema>;
+export type ExportDocumentOp = z.infer<typeof ExportDocumentSchema>;
 export type ReplyOp = z.infer<typeof ReplySchema>;
 
 /** The discriminated union of every operation. */

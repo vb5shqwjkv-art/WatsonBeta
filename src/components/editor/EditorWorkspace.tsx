@@ -16,8 +16,10 @@ import { WebSpeechSttProvider } from "@/speech/web-speech-stt";
 import type { SttProvider, SttSession, SttState } from "@/speech/types";
 import { LocalDocumentStore } from "@/storage/local-document-store";
 import type { JsonValue } from "@/lib/json";
+import { exportDocx, exportPdf, type ExportFormat } from "@/export/exporter";
 import { DocumentSheet } from "./DocumentSheet";
 import { MicButton } from "../voice/MicButton";
+import { ExportMenu } from "./ExportMenu";
 
 /** Dictation runs in Italian only. */
 const DICTATION_LANG = "it-IT";
@@ -41,6 +43,7 @@ export function EditorWorkspace() {
   });
 
   const pipelineRef = useRef<DictationPipeline | null>(null);
+  const controllerRef = useRef<EditorController | null>(null);
   const sttProviderRef = useRef<SttProvider | null>(null);
   const sessionRef = useRef<SttSession | null>(null);
   const storeRef = useRef<LocalDocumentStore>(new LocalDocumentStore());
@@ -51,6 +54,22 @@ export function EditorWorkspace() {
   const [interim, setInterim] = useState("");
   const [supported, setSupported] = useState(true);
   const [saved, setSaved] = useState(false);
+  const [exporting, setExporting] = useState(false);
+
+  const handleExport = useCallback(async (format: ExportFormat) => {
+    const controller = controllerRef.current;
+    if (!controller) return;
+    setExporting(true);
+    try {
+      if (format === "pdf") {
+        exportPdf(DOCUMENT_TITLE);
+      } else {
+        await exportDocx(controller.snapshot().content, DOCUMENT_TITLE);
+      }
+    } finally {
+      setExporting(false);
+    }
+  }, []);
 
   // Build the controller + pipeline, restore autosaved content, and autosave
   // on every change — all bound to the editor's lifetime.
@@ -60,12 +79,13 @@ export function EditorWorkspace() {
       documentId: DOCUMENT_ID,
       title: DOCUMENT_TITLE,
     });
+    controllerRef.current = controller;
     pipelineRef.current = new DictationPipeline(
       controller,
       new ConversationManager(),
       new ContextManager(),
       new TurnQueue(),
-      { onProcessingChange: setProcessing },
+      { onProcessingChange: setProcessing, onExport: (f) => void handleExport(f) },
     );
 
     if (process.env.NODE_ENV !== "production") {
@@ -99,7 +119,7 @@ export function EditorWorkspace() {
       editor.off("update", handleUpdate);
       if (timer) clearTimeout(timer);
     };
-  }, [editor]);
+  }, [editor, handleExport]);
 
   useEffect(() => {
     const provider = new WebSpeechSttProvider();
@@ -143,6 +163,7 @@ export function EditorWorkspace() {
 
   return (
     <div className="workspace">
+      <ExportMenu onExport={handleExport} busy={exporting} />
       <DocumentSheet editor={editor} />
       <MicButton
         on={micOn}

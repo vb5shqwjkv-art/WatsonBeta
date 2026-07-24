@@ -53,9 +53,9 @@ export function isGenerativeOperation(op: Operation): boolean {
   return generativeSet.has(op.type);
 }
 
-/** Whether this operation mutates document content (vs. reply/meta). */
+/** Whether this operation mutates document content (vs. reply/export/meta). */
 export function isMutating(op: Operation): boolean {
-  return op.type !== "reply";
+  return op.type !== "reply" && op.type !== "export_document";
 }
 
 /**
@@ -117,6 +117,8 @@ export function describeOperation(op: Operation): string {
       return `Undo ${op.steps} step(s)`;
     case "restore_version":
       return `Restore version ${op.versionId}`;
+    case "export_document":
+      return `Export ${op.format.toUpperCase()}`;
     case "reply":
       return "Reply";
     default: {

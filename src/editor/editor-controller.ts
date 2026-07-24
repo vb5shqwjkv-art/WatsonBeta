@@ -507,6 +507,10 @@ export class EditorController {
         // Replies are surfaced by the pipeline, never applied to the document.
         return err(appError("unsupported", "Reply is not a document operation."));
 
+      case "export_document":
+        // Export is a client action handled by the pipeline, not a mutation.
+        return err(appError("unsupported", "Export is handled by the pipeline."));
+
       default: {
         const _never: never = op;
         return _never;

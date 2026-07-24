@@ -29,6 +29,7 @@ import { requestReasoning, requestTextTransform } from "./ai-client";
 export interface DictationHooks {
   onProcessingChange?(processing: boolean): void;
   onApplied?(result: TurnResult): void;
+  onExport?(format: "pdf" | "docx"): void;
   onError?(message: string): void;
 }
 
@@ -66,7 +67,15 @@ export class DictationPipeline {
         hiddenAfter: input.hiddenAfter,
       });
 
-      const operations = await this.resolveGenerative(outcome.operations);
+      // Export is a client action, not a document mutation: peel it off.
+      for (const op of outcome.operations) {
+        if (op.type === "export_document") this.hooks.onExport?.(op.format);
+      }
+      const editable = outcome.operations.filter(
+        (op) => op.type !== "export_document",
+      );
+
+      const operations = await this.resolveGenerative(editable);
       const result = this.controller.applyTurn(operations, newTurnId(), {
         expectedVersion: outcome.basedOnVersion,
       });

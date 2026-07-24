@@ -66,7 +66,7 @@ validator can never drift.
   `set_font_size` (absolute pt or relative "+2"), `create_table`, `modify_table`,
   `create_list`
 - **Generative (re-invoke the LLM):** `transform_content`, `summarize`
-- **Meta:** `undo`, `restore_version`, `reply`
+- **Meta:** `undo`, `restore_version`, `export_document` (PDF/DOCX), `reply`
 
 Targets are resolved references — a `blockId`, `@selection`, or `@last` — which
 is how "make _that_ bold" and "move _this part_ above" become concrete edits.
@@ -169,12 +169,23 @@ surviving a reload, and a full actuator regression (insert, color/underline/bold
 by line number, insert after a line, checklist, table swap + undo) with zero
 failures.
 
+**Export — DOCX & PDF (done):**
+
+- **DOCX**: a real `.docx` is built from the document JSON (`src/export`,
+  `docx` lib) preserving headings, bold/italic/underline/strike/code, text
+  color, font size, highlight, links, alignment, lists, task lists, and tables.
+- **PDF**: produced through the browser print pipeline with dedicated print
+  styles that strip the UI and line gutter and lay the document out on A4.
+- Triggered by the top-corner export control **or by voice** ("esporta in PDF",
+  "salvalo come Word") via the `export_document` operation.
+
 Roadmap:
 
 - **Phase 3** — Harden the voice loop: OpenAI Realtime/Whisper provider for
   robustness, barge-in, faster endpointing.
-- **Phase 4** — Export (DOCX/PDF), autosave, versions, Supabase Auth.
-- **Phase 5** — Latency, ambiguity handling, advanced tables.
+- **Phase 4** — Supabase Auth + move autosave/versions to the database.
+- **Phase 5** — Latency, ambiguity handling, advanced tables, free-placement
+  annotations (arrows anchored to a specific word).
 
 ---
 

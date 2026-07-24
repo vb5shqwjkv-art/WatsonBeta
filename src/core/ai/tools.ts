@@ -6,6 +6,7 @@ import {
   CreateListSchema,
   CreateTableSchema,
   DeleteContentSchema,
+  ExportDocumentSchema,
   FormatTextSchema,
   InsertContentSchema,
   ModifyTableSchema,
@@ -136,6 +137,12 @@ const REGISTRY: readonly ToolSpec[] = [
     description:
       "Restore a previously saved version of the document. Use for 'restore the previous version', 'the earlier one was better'.",
     schema: RestoreVersionSchema as unknown as OpObject,
+  },
+  {
+    name: "export_document",
+    description:
+      "Export the finished document as a file. Use for 'esporta in PDF', 'salvalo come Word', 'trasformalo in un documento/PDF', 'scaricalo'.",
+    schema: ExportDocumentSchema as unknown as OpObject,
   },
   {
     name: "reply",

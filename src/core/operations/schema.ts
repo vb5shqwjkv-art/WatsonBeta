@@ -222,6 +222,13 @@ export const RestoreVersionSchema = z.object({
   versionId: z.string(),
 });
 
+export const ExportDocumentSchema = z.object({
+  type: z.literal("export_document"),
+  format: z
+    .enum(["pdf", "docx"])
+    .describe("Export the finished document as a PDF or a Word (.docx) file."),
+});
+
 export const ReplySchema = z.object({
   type: z.literal("reply"),
   message: z
@@ -246,6 +253,7 @@ export const OperationSchema = z.discriminatedUnion("type", [
   SummarizeSchema,
   UndoSchema,
   RestoreVersionSchema,
+  ExportDocumentSchema,
   ReplySchema,
 ]);
 
@@ -266,6 +274,7 @@ export const OPERATION_TYPES = [
   "summarize",
   "undo",
   "restore_version",
+  "export_document",
   "reply",
 ] as const;
 
