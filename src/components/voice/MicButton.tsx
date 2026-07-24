@@ -1,5 +1,6 @@
 "use client";
 
+import type { ReactNode } from "react";
 import type { SttState } from "@/speech/types";
 
 /**
@@ -15,7 +16,10 @@ export interface MicButtonProps {
   processing: boolean;
   state: SttState;
   interim: string;
+  saved: boolean;
   onToggle: () => void;
+  /** Rendered above the button (e.g. the language toggle). */
+  children?: ReactNode;
 }
 
 function MicIcon() {
@@ -42,7 +46,9 @@ export function MicButton({
   processing,
   state,
   interim,
+  saved,
   onToggle,
+  children,
 }: MicButtonProps) {
   const label = !supported
     ? "Dettatura non supportata in questo browser"
@@ -56,11 +62,14 @@ export function MicButton({
       ? "Sto scrivendo…"
       : on
         ? interim || "Ti ascolto…"
-        : "Tocca per parlare";
+        : saved
+          ? "Salvato ✓"
+          : "Tocca per parlare";
 
   return (
     <div className="mic-dock">
-      <div className="mic-status" data-active={on || processing}>
+      {children}
+      <div className="mic-status" data-active={on || processing || saved}>
         {status}
       </div>
       <button

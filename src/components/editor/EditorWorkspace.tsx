@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useEditor } from "@tiptap/react";
+import type { JSONContent } from "@tiptap/core";
 import { getEditorExtensions } from "@/editor/tiptap-config";
 import { EditorController } from "@/editor/editor-controller";
 import { CheckpointStack } from "@/core/document/versioning";
@@ -13,14 +14,21 @@ import { ContextManager } from "@/core/context/context-manager";
 import { DictationPipeline } from "@/client/dictation-pipeline";
 import { WebSpeechSttProvider } from "@/speech/web-speech-stt";
 import type { SttProvider, SttSession, SttState } from "@/speech/types";
-import { newDocumentId } from "@/lib/ids";
+import { LocalDocumentStore } from "@/storage/local-document-store";
+import type { JsonValue } from "@/lib/json";
 import { DocumentSheet } from "./DocumentSheet";
 import { MicButton } from "../voice/MicButton";
+import { LangToggle, type DictationLang } from "../voice/LangToggle";
+
+/** Single-document app for now; a stable id so autosave survives reloads. */
+const DOCUMENT_ID = "default";
+const DOCUMENT_TITLE = "Documento";
 
 /**
- * The whole application surface: the document sheet + the mic button. Owns the
- * editor instance, builds the Editor Controller and the dictation pipeline, and
- * gates all editing behind the microphone being on.
+ * The whole application surface: the paginated document sheet + the mic button
+ * (with an IT/EN switch). Owns the editor, builds the Editor Controller and the
+ * dictation pipeline, autosaves every change, and gates all editing behind the
+ * microphone being on.
  */
 export function EditorWorkspace() {
   const editor = useEditor({
@@ -33,19 +41,24 @@ export function EditorWorkspace() {
   const pipelineRef = useRef<DictationPipeline | null>(null);
   const sttProviderRef = useRef<SttProvider | null>(null);
   const sessionRef = useRef<SttSession | null>(null);
+  const storeRef = useRef<LocalDocumentStore>(new LocalDocumentStore());
+  const langRef = useRef<DictationLang>("it-IT");
 
   const [micOn, setMicOn] = useState(false);
   const [sttState, setSttState] = useState<SttState>("idle");
   const [processing, setProcessing] = useState(false);
   const [interim, setInterim] = useState("");
   const [supported, setSupported] = useState(true);
+  const [saved, setSaved] = useState(false);
+  const [lang, setLang] = useState<DictationLang>("it-IT");
 
-  // Build the controller + pipeline once the editor exists.
+  // Build the controller + pipeline, restore autosaved content, and autosave
+  // on every change — all bound to the editor's lifetime.
   useEffect(() => {
     if (!editor) return;
     const controller = new EditorController(editor, new CheckpointStack(), {
-      documentId: newDocumentId(),
-      title: "Documento",
+      documentId: DOCUMENT_ID,
+      title: DOCUMENT_TITLE,
     });
     pipelineRef.current = new DictationPipeline(
       controller,
@@ -55,12 +68,37 @@ export function EditorWorkspace() {
       { onProcessingChange: setProcessing },
     );
 
-    // Dev-only hook: lets e2e/debug tooling drive the actuator directly
-    // (the OpenAI-backed pipeline needs a key; this exercises the editor path).
     if (process.env.NODE_ENV !== "production") {
       (window as unknown as Record<string, unknown>).__editorController =
         controller;
     }
+
+    // Restore the autosaved document, if any.
+    const persisted = storeRef.current.load(DOCUMENT_ID);
+    if (persisted?.content) {
+      editor.commands.setContent(persisted.content as JSONContent, false);
+    }
+
+    // Autosave on every interaction (debounced).
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const handleUpdate = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        storeRef.current.save(DOCUMENT_ID, {
+          title: DOCUMENT_TITLE,
+          content: editor.getJSON() as JsonValue,
+          updatedAt: new Date().toISOString(),
+        });
+        setSaved(true);
+        window.setTimeout(() => setSaved(false), 1400);
+      }, 350);
+    };
+    editor.on("update", handleUpdate);
+
+    return () => {
+      editor.off("update", handleUpdate);
+      if (timer) clearTimeout(timer);
+    };
   }, [editor]);
 
   useEffect(() => {
@@ -70,11 +108,11 @@ export function EditorWorkspace() {
     return () => sessionRef.current?.stop();
   }, []);
 
-  const startListening = useCallback(() => {
+  const openSession = useCallback((language: DictationLang) => {
     const provider = sttProviderRef.current;
     if (!provider || !provider.isSupported) return;
     const session = provider.createSession(
-      { lang: "it-IT" },
+      { lang: language },
       {
         onInterim: (text) => setInterim(text),
         onFinal: (text) => {
@@ -87,8 +125,12 @@ export function EditorWorkspace() {
     );
     sessionRef.current = session;
     session.start();
-    setMicOn(true);
   }, []);
+
+  const startListening = useCallback(() => {
+    openSession(langRef.current);
+    setMicOn(true);
+  }, [openSession]);
 
   const stopListening = useCallback(() => {
     sessionRef.current?.stop();
@@ -103,6 +145,20 @@ export function EditorWorkspace() {
     else startListening();
   }, [micOn, startListening, stopListening]);
 
+  const changeLang = useCallback(
+    (next: DictationLang) => {
+      langRef.current = next;
+      setLang(next);
+      // Restart the session in the new language if currently listening.
+      if (sessionRef.current) {
+        sessionRef.current.stop();
+        sessionRef.current = null;
+        openSession(next);
+      }
+    },
+    [openSession],
+  );
+
   return (
     <div className="workspace">
       <DocumentSheet editor={editor} />
@@ -112,8 +168,11 @@ export function EditorWorkspace() {
         processing={processing}
         state={sttState}
         interim={interim}
+        saved={saved}
         onToggle={toggleMic}
-      />
+      >
+        <LangToggle value={lang} onChange={changeLang} />
+      </MicButton>
     </div>
   );
 }

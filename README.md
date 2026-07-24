@@ -148,6 +148,21 @@ the end (cursor parked, with a trailing paragraph after tables); the pristine
 empty first line is replaced on first write; the Web Speech session stops
 instead of looping on fatal errors (mic permission denied, etc.).
 
+**Pagination, autosave, and language scope (done):**
+
+- **Paginated A4 pages** — the document renders as real 794×1123 (96dpi) pages;
+  the sheet grows a whole page at a time and page-break markers ("Pagina N") are
+  drawn at each A4 boundary.
+- **Autosave every interaction** — every change is persisted (debounced) via a
+  swappable `DocumentPersistence` port (localStorage now, Supabase in Phase 4)
+  and restored on reload. A subtle "Salvato ✓" confirms it.
+- **Italian & English only** — a minimal IT/EN switch sets the dictation
+  language; the reasoning layer discards any utterance in another language.
+
+Verified in real Chromium: 3-page pagination with dividers, autosave surviving a
+reload, IT/EN toggle, and a full actuator regression (insert, color/underline/
+bold by line number, checklist, table swap + undo) with zero failures.
+
 Roadmap:
 
 - **Phase 3** — Harden the voice loop: OpenAI Realtime/Whisper provider for
