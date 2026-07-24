@@ -15,6 +15,7 @@ import TaskList from "@tiptap/extension-task-list";
 import TaskItem from "@tiptap/extension-task-item";
 import { BlockId } from "./extensions/block-id";
 import { FontSize } from "./extensions/font-size";
+import { ReservedSpace } from "./extensions/reserved-space";
 
 export interface EditorExtensionOptions {
   placeholder?: string;
@@ -54,6 +55,7 @@ export function getEditorExtensions(
     TaskList,
     TaskItem.configure({ nested: true }),
     FontSize,
+    ReservedSpace,
     BlockId,
   ];
 }

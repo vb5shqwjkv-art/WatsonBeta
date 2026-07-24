@@ -1,4 +1,5 @@
 import type { Editor, JSONContent } from "@tiptap/core";
+import type { Node as PMNode } from "@tiptap/pm/model";
 import { type AppError, type Result, appError, err, ok } from "@/lib/result";
 import { logger } from "@/lib/logger";
 import type { JsonValue } from "@/lib/json";
@@ -288,6 +289,50 @@ export class EditorController {
         .run();
     }
     this.editor.commands.setTextSelection(this.editor.state.doc.content.size);
+  }
+
+  /**
+   * Ensure an empty, numbered blank line with enough reserved height sits right
+   * after `blockId`, so a down-arrow anchored to that block doesn't overlap the
+   * following text. Reuses/grows an existing blank line rather than stacking.
+   */
+  ensureArrowSpaceAfter(blockId: string, heightPx: number): void {
+    const doc = this.editor.state.doc;
+    const children: { node: PMNode; offset: number }[] = [];
+    doc.forEach((node, offset) => children.push({ node, offset }));
+
+    const idx = children.findIndex((c) => c.node.attrs.blockId === blockId);
+    if (idx < 0) return;
+
+    const block = children[idx]!;
+    const next = children[idx + 1];
+    const tr = this.editor.state.tr;
+
+    if (next && next.node.type.name === "paragraph" && next.node.content.size === 0) {
+      const current = (next.node.attrs.reservedSpace as number | null) ?? 0;
+      if (current < heightPx) {
+        tr.setNodeAttribute(next.offset, "reservedSpace", heightPx);
+      } else {
+        return; // already enough space
+      }
+    } else {
+      const paragraph = this.editor.state.schema.nodes.paragraph!.create({
+        reservedSpace: heightPx,
+      });
+      tr.insert(block.offset + block.node.nodeSize, paragraph);
+    }
+    this.editor.view.dispatch(tr);
+  }
+
+  /** Collapse all auto-reserved blank lines back to normal height. */
+  clearReservedSpaces(): void {
+    const tr = this.editor.state.tr;
+    this.editor.state.doc.descendants((node, pos) => {
+      if (node.type.name === "paragraph" && node.attrs.reservedSpace) {
+        tr.setNodeAttribute(pos, "reservedSpace", null);
+      }
+    });
+    if (tr.docChanged) this.editor.view.dispatch(tr);
   }
 
   /** True when the document is just one empty text block (never dictated into). */

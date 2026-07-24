@@ -37,6 +37,7 @@ export interface DictationHooks {
 
 const BIG_ARROW_PX = 40;
 const NORMAL_ARROW_PX = 24;
+const ARROW_SPACE_PADDING = 14;
 
 export class DictationPipeline {
   constructor(
@@ -81,6 +82,7 @@ export class DictationPipeline {
         } else if (op.type === "annotate") {
           const blockId = this.controller.resolveBlockId(op.target);
           if (blockId) {
+            const sizePx = op.size === "big" ? BIG_ARROW_PX : NORMAL_ARROW_PX;
             this.annotations.add({
               kind: "arrow",
               blockId,
@@ -88,12 +90,18 @@ export class DictationPipeline {
               occurrence: op.occurrence,
               direction: op.direction,
               color: op.color ?? "#1a1a1a",
-              sizePx: op.size === "big" ? BIG_ARROW_PX : NORMAL_ARROW_PX,
+              sizePx,
             });
+            // Reserve a numbered blank line below so a down-arrow has room and
+            // never overlaps the following text.
+            if (op.direction === "down") {
+              this.controller.ensureArrowSpaceAfter(blockId, sizePx + ARROW_SPACE_PADDING);
+            }
             annotationsChanged = true;
           }
         } else if (op.type === "clear_annotations") {
           this.annotations.removeAll();
+          this.controller.clearReservedSpaces();
           annotationsChanged = true;
         }
       }
