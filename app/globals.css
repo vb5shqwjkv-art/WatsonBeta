@@ -1,0 +1,47 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Shared design tokens. Exposed as CSS custom properties so Tailwind utilities
+ * (mapped in tailwind.config.ts) and raw editor/node CSS share one palette.
+ */
+:root {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto,
+    Helvetica, Arial, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas,
+    monospace;
+
+  --color-ground: #f5f7f9;
+  --color-surface: #ffffff;
+  --color-border: #dce1e7;
+  --color-muted: #5a6472;
+  --color-ink: #14171f;
+  --color-accent: #0c8f83;
+  --color-signal: #c67615;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --color-ground: #0d1015;
+    --color-surface: #141a21;
+    --color-border: #29323d;
+    --color-muted: #8a96a5;
+    --color-ink: #e5eaf1;
+    --color-accent: #2ecfbc;
+    --color-signal: #e6a24e;
+  }
+}
+
+html,
+body {
+  padding: 0;
+  margin: 0;
+  background: var(--color-ground);
+  color: var(--color-ink);
+  font-family: var(--font-sans);
+}
+
+* {
+  box-sizing: border-box;
+}

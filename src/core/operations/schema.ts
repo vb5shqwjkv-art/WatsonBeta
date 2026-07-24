@@ -1,0 +1,248 @@
+import { z } from "zod";
+import { BlockType, MarkType, TextAlign } from "@/core/document/types";
+
+/**
+ * ─────────────────────────────────────────────────────────────────────────
+ * The Operation DSL — the language the AI speaks to the editor
+ * ─────────────────────────────────────────────────────────────────────────
+ *
+ * The reasoning engine never emits raw ProseMirror JSON. It emits operations
+ * from this closed, validated set. These Zod schemas are the single source of
+ * truth: TypeScript types are inferred from them (see `./types.ts`), and the
+ * OpenAI tool/function definitions are derived from them (see `../ai/tools.ts`).
+ *
+ * Every operation that mutates content addresses a `TargetRef` or `Position`,
+ * which is how referential language ("that", "this part", "above") is grounded
+ * to concrete, stable block ids.
+ */
+
+const enumValues = <T extends Record<string, string>>(o: T) =>
+  Object.values(o) as [string, ...string[]];
+
+/* ── References ──────────────────────────────────────────────────────────── */
+
+/**
+ * A resolvable reference to existing content. Symbolic refs (`@selection`,
+ * `@last`, `@document`) are resolved by the editor against live state; a
+ * `block` ref names an explicit stable id.
+ */
+export const TargetRefSchema = z.discriminatedUnion("kind", [
+  z
+    .object({ kind: z.literal("selection") })
+    .describe("The user's current selection or cursor block ('this', 'that')."),
+  z
+    .object({ kind: z.literal("last") })
+    .describe("The most recently created/edited block ('it', 'the last one')."),
+  z
+    .object({ kind: z.literal("document") })
+    .describe("The whole document."),
+  z
+    .object({ kind: z.literal("block"), blockId: z.string() })
+    .describe("An explicit block, by stable id from the document index."),
+]);
+
+/** An insertion point for new content. */
+export const PositionSchema = z.discriminatedUnion("at", [
+  z.object({ at: z.literal("cursor") }).describe("At the current cursor."),
+  z.object({ at: z.literal("documentStart") }),
+  z.object({ at: z.literal("documentEnd") }),
+  z.object({ at: z.literal("before"), blockId: z.string() }),
+  z.object({ at: z.literal("after"), blockId: z.string() }),
+]);
+
+/* ── Content ─────────────────────────────────────────────────────────────── */
+
+/** Plain text to write. Double newlines split into separate paragraphs. */
+export const ContentSpecSchema = z.object({
+  text: z.string().describe("The text to write."),
+  as: z
+    .enum(enumValues(BlockType))
+    .optional()
+    .describe("Block type to wrap the text in; defaults to paragraph."),
+});
+
+export const MarkSpecSchema = z.discriminatedUnion("type", [
+  z.object({ type: z.literal(MarkType.Bold) }),
+  z.object({ type: z.literal(MarkType.Italic) }),
+  z.object({ type: z.literal(MarkType.Underline) }),
+  z.object({ type: z.literal(MarkType.Strike) }),
+  z.object({ type: z.literal(MarkType.Code) }),
+  z.object({ type: z.literal(MarkType.Highlight), color: z.string().optional() }),
+  z.object({ type: z.literal(MarkType.Link), href: z.string() }),
+]);
+
+/* ── Table operations ────────────────────────────────────────────────────── */
+
+export const TableOpSchema = z.discriminatedUnion("op", [
+  z.object({ op: z.literal("swapColumns"), a: z.number().int(), b: z.number().int() }),
+  z.object({ op: z.literal("swapRows"), a: z.number().int(), b: z.number().int() }),
+  z.object({ op: z.literal("addRow"), at: z.number().int().optional() }),
+  z.object({ op: z.literal("addColumn"), at: z.number().int().optional() }),
+  z.object({ op: z.literal("deleteRow"), at: z.number().int() }),
+  z.object({ op: z.literal("deleteColumn"), at: z.number().int() }),
+  z.object({
+    op: z.literal("setCell"),
+    row: z.number().int(),
+    col: z.number().int(),
+    text: z.string(),
+  }),
+  z.object({ op: z.literal("toggleHeaderRow") }),
+]);
+
+/* ── Operations ──────────────────────────────────────────────────────────── */
+
+export const InsertContentSchema = z.object({
+  type: z.literal("insert_content"),
+  position: PositionSchema.default({ at: "cursor" }),
+  content: ContentSpecSchema,
+});
+
+export const ReplaceContentSchema = z.object({
+  type: z.literal("replace_content"),
+  target: TargetRefSchema,
+  content: ContentSpecSchema,
+});
+
+export const DeleteContentSchema = z.object({
+  type: z.literal("delete_content"),
+  target: TargetRefSchema,
+});
+
+export const MoveContentSchema = z.object({
+  type: z.literal("move_content"),
+  target: TargetRefSchema,
+  destination: PositionSchema,
+});
+
+export const FormatTextSchema = z.object({
+  type: z.literal("format_text"),
+  target: TargetRefSchema,
+  marks: z.array(MarkSpecSchema).min(1),
+  mode: z.enum(["add", "remove", "toggle"]).default("add"),
+});
+
+export const SetBlockTypeSchema = z.object({
+  type: z.literal("set_block_type"),
+  target: TargetRefSchema,
+  blockType: z.enum(enumValues(BlockType)),
+  level: z
+    .number()
+    .int()
+    .min(1)
+    .max(6)
+    .optional()
+    .describe("Heading level, when blockType is 'heading'."),
+});
+
+export const SetAlignmentSchema = z.object({
+  type: z.literal("set_alignment"),
+  target: TargetRefSchema,
+  align: z.enum(enumValues(TextAlign)),
+});
+
+export const CreateTableSchema = z.object({
+  type: z.literal("create_table"),
+  position: PositionSchema.default({ at: "cursor" }),
+  rows: z.number().int().min(1).max(50),
+  cols: z.number().int().min(1).max(20),
+  withHeaderRow: z.boolean().default(true),
+  data: z
+    .array(z.array(z.string()))
+    .optional()
+    .describe("Optional row-major cell contents to prefill."),
+});
+
+export const ModifyTableSchema = z.object({
+  type: z.literal("modify_table"),
+  tableId: z.string(),
+  operation: TableOpSchema,
+});
+
+export const CreateListSchema = z.object({
+  type: z.literal("create_list"),
+  position: PositionSchema.default({ at: "cursor" }),
+  listKind: z.enum(["bullet", "ordered", "task"]),
+  items: z.array(z.string()).min(1),
+});
+
+/* ── Generative operations (re-invoke the LLM on a focused region) ───────── */
+
+export const TransformContentSchema = z.object({
+  type: z.literal("transform_content"),
+  target: TargetRefSchema,
+  instruction: z
+    .string()
+    .describe("How to rewrite the target, e.g. 'more scientific', 'simpler'."),
+});
+
+export const SummarizeSchema = z.object({
+  type: z.literal("summarize"),
+  target: TargetRefSchema,
+  targetLength: z
+    .enum(["oneLine", "short", "medium"])
+    .default("short")
+    .describe("Roughly how concise the summary should be."),
+});
+
+/* ── Meta operations ─────────────────────────────────────────────────────── */
+
+export const UndoSchema = z.object({
+  type: z.literal("undo"),
+  steps: z.number().int().min(1).default(1),
+});
+
+export const RestoreVersionSchema = z.object({
+  type: z.literal("restore_version"),
+  versionId: z.string(),
+});
+
+export const ReplySchema = z.object({
+  type: z.literal("reply"),
+  message: z
+    .string()
+    .describe("A conversational reply when no document edit is needed."),
+});
+
+/** The full discriminated union of every operation the AI may emit. */
+export const OperationSchema = z.discriminatedUnion("type", [
+  InsertContentSchema,
+  ReplaceContentSchema,
+  DeleteContentSchema,
+  MoveContentSchema,
+  FormatTextSchema,
+  SetBlockTypeSchema,
+  SetAlignmentSchema,
+  CreateTableSchema,
+  ModifyTableSchema,
+  CreateListSchema,
+  TransformContentSchema,
+  SummarizeSchema,
+  UndoSchema,
+  RestoreVersionSchema,
+  ReplySchema,
+]);
+
+/** Every operation `type` string, useful for routing and telemetry. */
+export const OPERATION_TYPES = [
+  "insert_content",
+  "replace_content",
+  "delete_content",
+  "move_content",
+  "format_text",
+  "set_block_type",
+  "set_alignment",
+  "create_table",
+  "modify_table",
+  "create_list",
+  "transform_content",
+  "summarize",
+  "undo",
+  "restore_version",
+  "reply",
+] as const;
+
+/** Operations whose execution requires a second, focused LLM call. */
+export const GENERATIVE_OPERATION_TYPES = [
+  "transform_content",
+  "summarize",
+] as const;
