@@ -69,6 +69,9 @@ export const MarkSpecSchema = z.discriminatedUnion("type", [
   z.object({ type: z.literal(MarkType.Code) }),
   z.object({ type: z.literal(MarkType.Highlight), color: z.string().optional() }),
   z.object({ type: z.literal(MarkType.Link), href: z.string() }),
+  z
+    .object({ type: z.literal(MarkType.Color), color: z.string() })
+    .describe("Text color as a CSS color, e.g. 'red', '#e11d48'."),
 ]);
 
 /* ── Table operations ────────────────────────────────────────────────────── */

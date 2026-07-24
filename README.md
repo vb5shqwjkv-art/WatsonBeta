@@ -120,12 +120,29 @@ adapter, and the `/api/ai` reasoning endpoint.
 
 48 unit tests, incl. headless ProseMirror-schema tests for indexing/resolution.
 
+**Phase 2 — Voice dictation, end-to-end (done):**
+
+- The whole UI is the document sheet + one microphone button. Editing happens
+  ONLY while the mic is on; the page is not otherwise user-editable. No chat,
+  no questions — the only output is the page changing as you speak.
+- The system prompt is a **dictation actuator**: it never chats, never asks,
+  decomposes a compound utterance ("scrivilo in rosso e sottolinea, poi sotto
+  fai una freccia e inizia un elenco puntato") into an ordered batch of tool
+  calls, and interprets spoken schematization like a human taking dictation.
+- Speech-to-Text via the Web Speech API behind a swappable `SttProvider` port
+  (OpenAI Realtime / Whisper are drop-in alternatives).
+- Client `DictationPipeline`: STT → Context Manager → `/api/ai` → resolve
+  generative ops via `/api/ai/transform` → Editor Controller, serialized.
+- Added text **color** ("in rosso") across the stack.
+
+Verified in a real browser (Chromium): insert, color + underline + bold,
+lists, tables, table column-swap, and semantic undo all apply correctly with
+zero failures. 56 unit tests.
+
 Roadmap:
 
-- **Phase 2** — Editor UI + text-driven turns (drive the whole pipeline by
-  typing, before voice); resolve generative ops (`transform`/`summarize`) via a
-  focused follow-up generation.
-- **Phase 3** — Voice loop: Speech Recognition + Conversation Manager end-to-end.
+- **Phase 3** — Harden the voice loop: OpenAI Realtime/Whisper provider for
+  robustness, barge-in, faster endpointing.
 - **Phase 4** — Export (DOCX/PDF), autosave, versions, Supabase Auth.
 - **Phase 5** — Latency, ambiguity handling, advanced tables.
 

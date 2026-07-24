@@ -60,6 +60,8 @@ const RequestSchema = z.object({
       }),
     )
     .default([]),
+  hiddenBefore: z.number().optional(),
+  hiddenAfter: z.number().optional(),
 });
 
 export async function POST(req: Request): Promise<Response> {
@@ -91,6 +93,8 @@ export async function POST(req: Request): Promise<Response> {
       index: parsed.data.index as never,
       selection: parsed.data.selection,
       history: parsed.data.history,
+      hiddenBefore: parsed.data.hiddenBefore,
+      hiddenAfter: parsed.data.hiddenAfter,
     });
 
     return NextResponse.json(outcome);

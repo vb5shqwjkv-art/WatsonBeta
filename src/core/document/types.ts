@@ -43,6 +43,8 @@ export const MarkType = {
   Code: "code",
   Highlight: "highlight",
   Link: "link",
+  /** Text color (via TextStyle), e.g. "scrivilo in rosso". */
+  Color: "color",
 } as const;
 
 export type MarkType = (typeof MarkType)[keyof typeof MarkType];

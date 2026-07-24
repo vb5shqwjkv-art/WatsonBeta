@@ -3,6 +3,8 @@ import StarterKit from "@tiptap/starter-kit";
 import Underline from "@tiptap/extension-underline";
 import Link from "@tiptap/extension-link";
 import Highlight from "@tiptap/extension-highlight";
+import TextStyle from "@tiptap/extension-text-style";
+import Color from "@tiptap/extension-color";
 import TextAlign from "@tiptap/extension-text-align";
 import Placeholder from "@tiptap/extension-placeholder";
 import Table from "@tiptap/extension-table";
@@ -35,6 +37,9 @@ export function getEditorExtensions(
       heading: { levels: [1, 2, 3, 4, 5, 6] },
     }),
     Underline,
+    // TextStyle carries inline color; Color adds the setColor/unsetColor commands.
+    TextStyle,
+    Color,
     Highlight.configure({ multicolor: true }),
     Link.configure({ openOnClick: false, autolink: true }),
     TextAlign.configure({ types: ["heading", "paragraph"] }),

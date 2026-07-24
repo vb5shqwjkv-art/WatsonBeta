@@ -64,7 +64,9 @@ export interface EditorControllerOptions {
   readonly title?: string;
 }
 
-const MARK_NAME: Record<MarkType, string> = {
+// Toggle-style marks handled uniformly via setMark/unsetMark/toggleMark.
+// Color is a TextStyle attribute (setColor) and is handled separately.
+const MARK_NAME: Partial<Record<MarkType, string>> = {
   [MarkType.Bold]: "bold",
   [MarkType.Italic]: "italic",
   [MarkType.Underline]: "underline",
@@ -122,6 +124,23 @@ export class EditorController {
     };
   }
 
+  /**
+   * Plain text of a target range. Used by the pipeline to resolve generative
+   * operations (transform/summarize): the client extracts the target text, has
+   * it rewritten by a focused server call, then applies a `replace_content`.
+   */
+  getTargetText(target: TargetRef): Result<string> {
+    const range = this.resolveEditRange(target);
+    if (!range.ok) return range;
+    const text = this.editor.state.doc.textBetween(
+      range.value.from,
+      range.value.to,
+      "\n",
+      " ",
+    );
+    return ok(text);
+  }
+
   /* ── Applying a turn ────────────────────────────────────────────────── */
 
   /**
@@ -157,7 +176,6 @@ export class EditorController {
     const applied: Operation[] = [];
     const failed: AppliedFailure[] = [];
     const summary: string[] = [];
-    let mutated = false;
 
     for (const op of operations) {
       if (!isMutating(op)) continue; // reply never reaches the controller
@@ -165,7 +183,6 @@ export class EditorController {
       if (result.ok) {
         applied.push(op);
         summary.push(result.value);
-        mutated = true;
       } else {
         failed.push({ op, error: result.error });
         this.log.warn("operation failed", {
@@ -175,7 +192,13 @@ export class EditorController {
       }
     }
 
-    if (mutated) {
+    // A new checkpoint is recorded only for *forward* edits. Meta ops (undo,
+    // restore_version) manage the version/history themselves via
+    // restoreSnapshot — checkpointing them would corrupt the undo stack.
+    const forwardEdit = applied.some(
+      (op) => op.type !== "undo" && op.type !== "restore_version",
+    );
+    if (forwardEdit) {
       this.version += 1;
       this.checkpoints.push({
         turnId,
@@ -184,7 +207,18 @@ export class EditorController {
       });
     }
 
+    // Park the cursor at the end so the next dictation appends there. In
+    // dictation mode the editor is not user-editable, so without this the
+    // implicit "cursor" would stay at position 0 and text would prepend.
+    if (applied.length > 0) this.parkCursorAtEnd();
+
     return { applied, failed, summary, conflict: false };
+  }
+
+  /** Move the selection to the end of the document (dictation append point). */
+  parkCursorAtEnd(): void {
+    const end = this.editor.state.doc.content.size;
+    this.editor.commands.setTextSelection(end);
   }
 
   /** Undo the last `steps` conversational turns (semantic undo). */
@@ -258,16 +292,25 @@ export class EditorController {
       case "format_text": {
         const range = this.resolveEditRange(op.target);
         if (!range.ok) return range;
-        const chain = this.editor
-          .chain()
-          .setTextSelection({ from: range.value.from, to: range.value.to });
+        const sel = { from: range.value.from, to: range.value.to };
+        // Each mark is applied in its own chain/run: some commands (notably
+        // Color's setColor) internally call run() on a sub-chain, which would
+        // otherwise swallow the rest of a shared chain. Marks don't shift
+        // positions, so the range stays valid across runs.
         for (const mark of op.marks) {
-          const name = MARK_NAME[mark.type];
-          if (op.mode === "remove") chain.unsetMark(name);
-          else if (op.mode === "toggle") chain.toggleMark(name, markAttrs(mark));
-          else chain.setMark(name, markAttrs(mark));
+          const chain = this.editor.chain().setTextSelection(sel);
+          if (mark.type === MarkType.Color) {
+            if (op.mode === "remove") chain.unsetColor();
+            else chain.setColor(mark.color);
+          } else {
+            const name = MARK_NAME[mark.type];
+            if (!name) continue;
+            if (op.mode === "remove") chain.unsetMark(name);
+            else if (op.mode === "toggle") chain.toggleMark(name, markAttrs(mark));
+            else chain.setMark(name, markAttrs(mark));
+          }
+          chain.run();
         }
-        chain.run();
         return ok(label);
       }
 
@@ -450,7 +493,9 @@ export class EditorController {
   /** Best-effort: remember the block at a position as the `@last` target. */
   private trackLastBlockAt(pos: number): void {
     const size = this.editor.state.doc.content.size;
-    const id = blockIdAt(this.editor.state.doc, Math.min(pos, size));
+    // +1 lands inside the just-inserted block rather than on the boundary
+    // between it and the previous block.
+    const id = blockIdAt(this.editor.state.doc, Math.min(pos + 1, size));
     if (id) this.lastBlockId = id;
   }
 }
