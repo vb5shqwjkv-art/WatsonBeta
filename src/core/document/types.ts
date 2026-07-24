@@ -66,6 +66,12 @@ export type TextAlign = (typeof TextAlign)[keyof typeof TextAlign];
 export interface IndexedBlock {
   /** Stable id, mirrored from the node's `attrs.blockId`. */
   readonly blockId: string;
+  /**
+   * 1-based line number = position among top-level blocks. This is the number
+   * shown in the editor gutter and the handle the user references by voice
+   * ("al rigo 4"). Kept identical across UI, context, and resolver.
+   */
+  readonly line: number;
   readonly type: BlockType;
   /** Heading depth (1–6) when `type === 'heading'`. */
   readonly level?: number;

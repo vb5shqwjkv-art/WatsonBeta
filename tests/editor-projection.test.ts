@@ -6,6 +6,7 @@ import { buildIndex } from "@/editor/document-indexer";
 import { blockIdAt } from "@/editor/selection-projector";
 import {
   findBlockById,
+  findBlockByLine,
   resolveInsertPosition,
   resolveTargetRange,
 } from "@/editor/reference-resolver";
@@ -76,6 +77,8 @@ describe("buildIndex", () => {
     expect(heading.type).toBe("heading");
     expect(heading.level).toBe(1);
     expect(heading.textPreview).toBe("Titolo");
+    // Line numbers are 1-based and match top-to-bottom order.
+    expect(index.blocks.map((b) => b.line)).toEqual([1, 2, 3, 4]);
   });
 
   it("summarizes lists and tables for targeting", () => {
@@ -132,6 +135,30 @@ describe("reference resolver", () => {
     );
     expect(range.ok).toBe(false);
     if (!range.ok) expect(range.error.code).toBe("reference");
+  });
+
+  it("resolves a block by its line number", () => {
+    const d = sampleDoc();
+    // Line 2 is the paragraph "Ciao mondo".
+    const byLine = findBlockByLine(d, 2);
+    expect(byLine?.node.textContent).toBe("Ciao mondo");
+
+    const range = resolveTargetRange(d, { kind: "line", line: 2 }, ctx);
+    expect(range.ok).toBe(true);
+    if (range.ok) expect(range.value.blockId).toBe("blk_p");
+  });
+
+  it("errors on a line number past the end", () => {
+    const range = resolveTargetRange(sampleDoc(), { kind: "line", line: 99 }, ctx);
+    expect(range.ok).toBe(false);
+  });
+
+  it("resolves beforeLine/afterLine insertion positions", () => {
+    const d = sampleDoc();
+    const before = resolveInsertPosition(d, { at: "beforeLine", line: 2 }, ctx);
+    const after = resolveInsertPosition(d, { at: "afterLine", line: 2 }, ctx);
+    expect(before.ok && after.ok).toBe(true);
+    if (before.ok && after.ok) expect(after.value).toBeGreaterThan(before.value);
   });
 
   it("resolves before/after insertion positions", () => {

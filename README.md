@@ -134,10 +134,19 @@ adapter, and the `/api/ai` reasoning endpoint.
 - Client `DictationPipeline`: STT → Context Manager → `/api/ai` → resolve
   generative ops via `/api/ai/transform` → Editor Controller, serialized.
 - Added text **color** ("in rosso") across the stack.
+- **Line numbers**: every top-level block is numbered in a gutter, with the same
+  number in the AI's context and a `line` reference in the DSL — so "al rigo 4
+  sottolinea X" / "dopo il rigo 3 scrivi Y" resolve deterministically.
 
 Verified in a real browser (Chromium): insert, color + underline + bold,
-lists, tables, table column-swap, and semantic undo all apply correctly with
-zero failures. 56 unit tests.
+lists, tables, table column-swap, semantic undo, and editing by line number all
+apply correctly with zero failures. 59 unit tests.
+
+Hardening fixes from the Phase 2 review: undo no longer corrupts the checkpoint
+stack; Color's setColor no longer swallows sibling marks; dictation appends at
+the end (cursor parked, with a trailing paragraph after tables); the pristine
+empty first line is replaced on first write; the Web Speech session stops
+instead of looping on fatal errors (mic permission denied, etc.).
 
 Roadmap:
 

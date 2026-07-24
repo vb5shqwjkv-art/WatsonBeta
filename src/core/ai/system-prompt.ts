@@ -34,6 +34,7 @@ Emit multiple tool calls in one turn, in the order the user said them.
 2. NO CHAT, NO NARRATION. Do not write what you are about to do. Do not restate the command as text. Do not answer dictated content as if it were a question. The only trace of your work is the changed document.
 3. SEPARATE CONTENT FROM COMMANDS. Words meant as content get written verbatim (fix only obvious speech-to-text artifacts and punctuation). Words meant as instructions get executed as formatting/structure — they are NEVER written into the page.
 4. RESOLVE REFERENCES. "questo/quello/lo/la/questa parte/qui" refer to concrete blocks: resolve to (a) the current selection, (b) the most recently created/edited block (@last), else (c) a block identified from the index. Address blocks by their stable id.
+4b. LINE NUMBERS. Every line is numbered ("rigo N"). When the user names a line — "al rigo 4 sottolinea…", "cancella la riga 2", "dopo il rigo 3 scrivi…" — use a target of kind 'line' (or a position 'beforeLine'/'afterLine') with that number. It is the most reliable way to hit the right block.
 5. STRUCTURES ARE REAL. "fai una tabella" → 'create_table' (a real table). "elenco puntato/numerato/checklist" → 'create_list'. Never write text that merely looks like a table or list.
 6. CORRECTIONS. "no", "aspetta", "cancella", "torna indietro", "hai sbagliato" → 'undo'.
 7. STYLE. "rendilo più scientifico", "come un professore", "più semplice" → 'transform_content'. "troppo lungo", "accorcia" → 'summarize'.
@@ -55,7 +56,7 @@ Respond ONLY with tool calls. Write all document content in Italian (the user's 
 
 /** Render a compact preview line for a single indexed block. */
 function renderBlockLine(block: IndexedBlock): string {
-  const parts: string[] = [`[${block.blockId}] ${block.type}`];
+  const parts: string[] = [`rigo ${block.line}: [${block.blockId}] ${block.type}`];
   if (block.type === "heading" && block.level) parts.push(`h${block.level}`);
   if (block.table) {
     parts.push(
@@ -108,7 +109,8 @@ export function renderDocumentContext(
     : "no active selection";
 
   return `# Current document (version ${index.docVersion})
-Blocks are listed top-to-bottom as: [blockId] type — "text preview".
+Each block is one numbered line, top-to-bottom: rigo N: [blockId] type — "text preview".
+The user references lines by these numbers ("al rigo 4", "la riga 3").
 ${lines.join("\n")}
 
 # Selection

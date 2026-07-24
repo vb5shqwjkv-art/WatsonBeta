@@ -72,6 +72,7 @@ export function buildIndex(doc: PMNode, docVersion: number): DocumentIndex {
 
     const block: IndexedBlock = {
       blockId,
+      line: i + 1, // 1-based, matches the gutter and the `line` reference
       type,
       level:
         type === BlockType.Heading && typeof node.attrs.level === "number"

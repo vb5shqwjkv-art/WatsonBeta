@@ -48,6 +48,22 @@ export function findBlockById(
   return result;
 }
 
+/**
+ * Locate a top-level block by its 1-based line number. Line numbering is the
+ * position among the document's direct children — identical to the gutter and
+ * the projected index.
+ */
+export function findBlockByLine(
+  doc: PMNode,
+  line: number,
+): { node: PMNode; pos: number } | null {
+  let result: { node: PMNode; pos: number } | null = null;
+  doc.forEach((node, offset, index) => {
+    if (index === line - 1) result = { node, pos: offset };
+  });
+  return result;
+}
+
 function blockRange(doc: PMNode, blockId: string): Result<DocRange> {
   const hit = findBlockById(doc, blockId);
   if (!hit) {
@@ -58,6 +74,14 @@ function blockRange(doc: PMNode, blockId: string): Result<DocRange> {
     to: hit.pos + hit.node.nodeSize,
     blockId,
   });
+}
+
+function lineRange(doc: PMNode, line: number): Result<DocRange> {
+  const hit = findBlockByLine(doc, line);
+  if (!hit) return err(appError("reference", `Line ${line} does not exist.`));
+  const blockId =
+    typeof hit.node.attrs.blockId === "string" ? hit.node.attrs.blockId : null;
+  return ok({ from: hit.pos, to: hit.pos + hit.node.nodeSize, blockId });
 }
 
 /** Resolve a {@link TargetRef} to a concrete document range. */
@@ -71,6 +95,8 @@ export function resolveTargetRange(
       return ok({ from: 0, to: doc.content.size, blockId: null });
     case "block":
       return blockRange(doc, ref.blockId);
+    case "line":
+      return lineRange(doc, ref.line);
     case "last":
       if (!ctx.lastBlockId) {
         return err(appError("reference", "There is no recent block to target."));
@@ -123,6 +149,16 @@ export function resolveInsertPosition(
       if (!hit) {
         return err(appError("reference", `Block ${position.blockId} not found.`));
       }
+      return ok(hit.pos + hit.node.nodeSize);
+    }
+    case "beforeLine": {
+      const hit = findBlockByLine(doc, position.line);
+      if (!hit) return err(appError("reference", `Line ${position.line} not found.`));
+      return ok(hit.pos);
+    }
+    case "afterLine": {
+      const hit = findBlockByLine(doc, position.line);
+      if (!hit) return err(appError("reference", `Line ${position.line} not found.`));
       return ok(hit.pos + hit.node.nodeSize);
     }
     default: {

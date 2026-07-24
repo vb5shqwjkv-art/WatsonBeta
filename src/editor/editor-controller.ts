@@ -82,6 +82,10 @@ function markAttrs(mark: MarkSpec): Record<string, unknown> {
   return {};
 }
 
+// Block types that cannot hold a trailing cursor after them; dictation needs a
+// following paragraph so the next utterance doesn't land inside the block.
+const TRAILING_PARAGRAPH_AFTER = new Set(["table", "horizontalRule", "image"]);
+
 export class EditorController {
   private version = 0;
   private title: string;
@@ -217,8 +221,36 @@ export class EditorController {
 
   /** Move the selection to the end of the document (dictation append point). */
   parkCursorAtEnd(): void {
-    const end = this.editor.state.doc.content.size;
-    this.editor.commands.setTextSelection(end);
+    const doc = this.editor.state.doc;
+    const last = doc.lastChild;
+    // A document cannot end with a bare cursor "after" an atom block like a
+    // table, so continued dictation would otherwise land INSIDE it. Ensure a
+    // trailing paragraph to receive the next utterance.
+    if (last && TRAILING_PARAGRAPH_AFTER.has(last.type.name)) {
+      this.editor
+        .chain()
+        .insertContentAt(doc.content.size, { type: "paragraph" })
+        .run();
+    }
+    this.editor.commands.setTextSelection(this.editor.state.doc.content.size);
+  }
+
+  /** True when the document is just one empty text block (never dictated into). */
+  private isPristineEmpty(): boolean {
+    const doc = this.editor.state.doc;
+    const only = doc.firstChild;
+    return doc.childCount === 1 && !!only && only.isTextblock && only.content.size === 0;
+  }
+
+  /**
+   * Insert content, replacing the pristine empty paragraph on the very first
+   * write so the document doesn't start with a stray empty "rigo 1".
+   */
+  private insertContent(pos: number, content: JSONContent | JSONContent[]): boolean {
+    if (this.isPristineEmpty()) {
+      return this.editor.commands.setContent(content, false);
+    }
+    return this.editor.chain().insertContentAt(pos, content).run();
   }
 
   /** Undo the last `steps` conversational turns (semantic undo). */
@@ -253,7 +285,7 @@ export class EditorController {
         const pos = resolveInsertPosition(doc, op.position, ctx);
         if (!pos.ok) return pos;
         const content = contentSpecToJSON(op.content);
-        if (!this.editor.chain().insertContentAt(pos.value, content).run()) {
+        if (!this.insertContent(pos.value, content)) {
           return err(appError("internal", "Insert failed."));
         }
         this.trackLastBlockAt(pos.value);
@@ -356,7 +388,7 @@ export class EditorController {
       case "create_table": {
         const pos = resolveInsertPosition(doc, op.position, ctx);
         if (!pos.ok) return pos;
-        this.editor.chain().insertContentAt(pos.value, buildTableJSON(op)).run();
+        this.insertContent(pos.value, buildTableJSON(op));
         this.trackLastBlockAt(pos.value);
         return ok(label);
       }
@@ -364,7 +396,7 @@ export class EditorController {
       case "create_list": {
         const pos = resolveInsertPosition(doc, op.position, ctx);
         if (!pos.ok) return pos;
-        this.editor.chain().insertContentAt(pos.value, buildListJSON(op)).run();
+        this.insertContent(pos.value, buildListJSON(op));
         this.trackLastBlockAt(pos.value);
         return ok(label);
       }

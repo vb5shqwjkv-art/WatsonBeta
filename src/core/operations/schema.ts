@@ -39,6 +39,9 @@ export const TargetRefSchema = z.discriminatedUnion("kind", [
   z
     .object({ kind: z.literal("block"), blockId: z.string() })
     .describe("An explicit block, by stable id from the document index."),
+  z
+    .object({ kind: z.literal("line"), line: z.number().int().min(1) })
+    .describe("A block by its 1-based line number ('al rigo 4')."),
 ]);
 
 /** An insertion point for new content. */
@@ -48,6 +51,12 @@ export const PositionSchema = z.discriminatedUnion("at", [
   z.object({ at: z.literal("documentEnd") }),
   z.object({ at: z.literal("before"), blockId: z.string() }),
   z.object({ at: z.literal("after"), blockId: z.string() }),
+  z
+    .object({ at: z.literal("beforeLine"), line: z.number().int().min(1) })
+    .describe("Before the block at this 1-based line number."),
+  z
+    .object({ at: z.literal("afterLine"), line: z.number().int().min(1) })
+    .describe("After the block at this 1-based line number."),
 ]);
 
 /* ── Content ─────────────────────────────────────────────────────────────── */

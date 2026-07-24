@@ -52,6 +52,14 @@ interface SpeechRecognitionLike {
 }
 type SpeechRecognitionCtor = new () => SpeechRecognitionLike;
 
+/** Errors that must stop the session rather than trigger an auto-restart. */
+const FATAL_ERRORS = new Set([
+  "not-allowed",
+  "service-not-allowed",
+  "audio-capture",
+  "language-not-supported",
+]);
+
 function getRecognitionCtor(): SpeechRecognitionCtor | null {
   if (typeof window === "undefined") return null;
   const w = window as unknown as {
@@ -101,6 +109,11 @@ class WebSpeechSession implements SttSession {
     recognition.onerror = (event) => {
       // "no-speech"/"aborted" are benign; keep the session alive.
       if (event.error === "no-speech" || event.error === "aborted") return;
+      // Fatal errors (permission denied, no mic, unsupported language) must NOT
+      // auto-restart — otherwise onend would loop forever. Tear the session down.
+      if (FATAL_ERRORS.has(event.error)) {
+        this.active = false;
+      }
       this.callbacks.onError?.(event.message || event.error);
       this.callbacks.onStateChange?.("error");
     };

@@ -10,6 +10,7 @@ import { EMPTY_SELECTION } from "@/core/document/types";
 function makeIndex(count: number): DocumentIndex {
   const blocks: IndexedBlock[] = Array.from({ length: count }, (_, i) => ({
     blockId: `blk_${i}`,
+    line: i + 1,
     type: "paragraph",
     textPreview: `block ${i}`,
     path: [i],

@@ -18,6 +18,7 @@ export const runtime = "nodejs";
 
 const IndexedBlockSchema = z.object({
   blockId: z.string(),
+  line: z.number(),
   type: z.string(),
   level: z.number().optional(),
   textPreview: z.string(),
