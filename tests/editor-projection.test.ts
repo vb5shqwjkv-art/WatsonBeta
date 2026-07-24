@@ -1,0 +1,170 @@
+import { describe, expect, it } from "vitest";
+import { getSchema, type JSONContent } from "@tiptap/core";
+import type { Node as PMNode } from "@tiptap/pm/model";
+import { getEditorExtensions } from "@/editor/tiptap-config";
+import { buildIndex } from "@/editor/document-indexer";
+import { blockIdAt } from "@/editor/selection-projector";
+import {
+  findBlockById,
+  resolveInsertPosition,
+  resolveTargetRange,
+} from "@/editor/reference-resolver";
+
+// A single schema shared by the headless tests (no DOM / editor view needed).
+const schema = getSchema(getEditorExtensions());
+
+function doc(content: JSONContent[]): PMNode {
+  return schema.nodeFromJSON({ type: "doc", content });
+}
+
+const para = (blockId: string, text: string): JSONContent => ({
+  type: "paragraph",
+  attrs: { blockId },
+  content: [{ type: "text", text }],
+});
+
+const sampleDoc = () =>
+  doc([
+    {
+      type: "heading",
+      attrs: { level: 1, blockId: "blk_h" },
+      content: [{ type: "text", text: "Titolo" }],
+    },
+    para("blk_p", "Ciao mondo"),
+    {
+      type: "bulletList",
+      attrs: { blockId: "blk_l" },
+      content: [
+        { type: "listItem", content: [para("blk_i1", "uno")] },
+        { type: "listItem", content: [para("blk_i2", "due")] },
+      ],
+    },
+    {
+      type: "table",
+      attrs: { blockId: "blk_t" },
+      content: [
+        {
+          type: "tableRow",
+          content: [
+            { type: "tableHeader", content: [para("blk_c1", "Nome")] },
+            { type: "tableHeader", content: [para("blk_c2", "Valore")] },
+          ],
+        },
+        {
+          type: "tableRow",
+          content: [
+            { type: "tableCell", content: [para("blk_c3", "osso")] },
+            { type: "tableCell", content: [para("blk_c4", "tessuto")] },
+          ],
+        },
+      ],
+    },
+  ]);
+
+describe("buildIndex", () => {
+  it("projects top-level blocks with type, level and previews", () => {
+    const index = buildIndex(sampleDoc(), 7);
+    expect(index.docVersion).toBe(7);
+    expect(index.blocks.map((b) => b.blockId)).toEqual([
+      "blk_h",
+      "blk_p",
+      "blk_l",
+      "blk_t",
+    ]);
+
+    const heading = index.blocks[0]!;
+    expect(heading.type).toBe("heading");
+    expect(heading.level).toBe(1);
+    expect(heading.textPreview).toBe("Titolo");
+  });
+
+  it("summarizes lists and tables for targeting", () => {
+    const index = buildIndex(sampleDoc(), 0);
+    const list = index.blocks.find((b) => b.blockId === "blk_l");
+    expect(list?.list).toMatchObject({ ordered: false, task: false, itemCount: 2 });
+
+    const table = index.blocks.find((b) => b.blockId === "blk_t");
+    expect(table?.table).toMatchObject({ rows: 2, cols: 2 });
+    expect(table?.table?.headers).toEqual(["Nome", "Valore"]);
+  });
+});
+
+describe("reference resolver", () => {
+  const ctx = { selection: { from: 0, to: 0 }, lastBlockId: "blk_p" };
+
+  it("finds a block by its stable id", () => {
+    const hit = findBlockById(sampleDoc(), "blk_p");
+    expect(hit).not.toBeNull();
+    expect(hit?.node.textContent).toBe("Ciao mondo");
+  });
+
+  it("resolves an explicit block target to its range", () => {
+    const d = sampleDoc();
+    const range = resolveTargetRange(d, { kind: "block", blockId: "blk_p" }, ctx);
+    expect(range.ok).toBe(true);
+    if (range.ok) {
+      expect(range.value.blockId).toBe("blk_p");
+      expect(range.value.to).toBeGreaterThan(range.value.from);
+    }
+  });
+
+  it("resolves @document to the whole document", () => {
+    const d = sampleDoc();
+    const range = resolveTargetRange(d, { kind: "document" }, ctx);
+    expect(range.ok).toBe(true);
+    if (range.ok) {
+      expect(range.value.from).toBe(0);
+      expect(range.value.to).toBe(d.content.size);
+    }
+  });
+
+  it("resolves @last via the tracked last block", () => {
+    const range = resolveTargetRange(sampleDoc(), { kind: "last" }, ctx);
+    expect(range.ok).toBe(true);
+    if (range.ok) expect(range.value.blockId).toBe("blk_p");
+  });
+
+  it("errors when a referenced block does not exist", () => {
+    const range = resolveTargetRange(
+      sampleDoc(),
+      { kind: "block", blockId: "blk_missing" },
+      ctx,
+    );
+    expect(range.ok).toBe(false);
+    if (!range.ok) expect(range.error.code).toBe("reference");
+  });
+
+  it("resolves before/after insertion positions", () => {
+    const d = sampleDoc();
+    const before = resolveInsertPosition(d, { at: "before", blockId: "blk_p" }, ctx);
+    const after = resolveInsertPosition(d, { at: "after", blockId: "blk_p" }, ctx);
+    expect(before.ok && after.ok).toBe(true);
+    if (before.ok && after.ok) expect(after.value).toBeGreaterThan(before.value);
+  });
+
+  it("resolves document start and end", () => {
+    const d = sampleDoc();
+    expect(resolveInsertPosition(d, { at: "documentStart" }, ctx)).toEqual({
+      ok: true,
+      value: 0,
+    });
+    const end = resolveInsertPosition(d, { at: "documentEnd" }, ctx);
+    expect(end.ok && end.value === d.content.size).toBe(true);
+  });
+});
+
+describe("blockIdAt", () => {
+  it("finds the addressable ancestor block for a position", () => {
+    const d = sampleDoc();
+    const hit = findBlockById(d, "blk_p")!;
+    // A position just inside the paragraph resolves back to its block id.
+    expect(blockIdAt(d, hit.pos + 1)).toBe("blk_p");
+  });
+
+  it("returns the top-level block id for a position inside a table cell", () => {
+    const d = sampleDoc();
+    const hit = findBlockById(d, "blk_c3")!;
+    // Deep inside a cell, the nearest addressable ancestor is the cell's block.
+    expect(blockIdAt(d, hit.pos + 1)).toBe("blk_c3");
+  });
+});

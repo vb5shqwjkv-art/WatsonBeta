@@ -98,16 +98,33 @@ tests/                        vitest (pure-core unit tests)
 
 ## Development status
 
-**Phase 0 — Foundation (this commit):** project scaffolding, the pure-domain
-spine (Document State model, operation DSL, AI tools + system prompt +
-reasoning engine, conversation/context managers, semantic undo), the OpenAI
-provider adapter, and the `/api/ai` reasoning endpoint. Unit-tested.
+**Phase 0 — Foundation (done):** project scaffolding, the pure-domain spine
+(Document State model, operation DSL, AI tools + system prompt + reasoning
+engine, conversation/context managers, semantic undo), the OpenAI provider
+adapter, and the `/api/ai` reasoning endpoint.
+
+**Phase 1 — Editor Controller + `blockId` backbone (done):**
+
+- `blockId` Tiptap extension: assigns a stable id to every addressable block
+  and repairs duplicates — the physical basis of referential grounding.
+- Full editor feature set wired (`tiptap-config`): headings, lists, tables,
+  task lists, code, quotes, links, marks, alignment.
+- `document-indexer` (tree → projected outline), `selection-projector`
+  (selection → blockIds), `reference-resolver` (`@selection` / `@last` /
+  `@document` / blockId → concrete ranges).
+- `EditorController`: the single actuator. Applies every structural operation
+  as a Tiptap transaction, enforces optimistic-concurrency (`basedOnVersion`),
+  and records one semantic checkpoint per turn for "go back".
+- Table edits modeled as a pure 2-D transform (`table-model`) — "swap the
+  columns" is deterministic and unit-tested, not fragile position math.
+
+48 unit tests, incl. headless ProseMirror-schema tests for indexing/resolution.
 
 Roadmap:
 
-- **Phase 1** — Editor Controller + Tiptap `blockId` extension: apply operations
-  as transactions, build the projected index, capture inverse ops.
-- **Phase 2** — Editor UI + text-driven turns (drive the pipeline before voice).
+- **Phase 2** — Editor UI + text-driven turns (drive the whole pipeline by
+  typing, before voice); resolve generative ops (`transform`/`summarize`) via a
+  focused follow-up generation.
 - **Phase 3** — Voice loop: Speech Recognition + Conversation Manager end-to-end.
 - **Phase 4** — Export (DOCX/PDF), autosave, versions, Supabase Auth.
 - **Phase 5** — Latency, ambiguity handling, advanced tables.
