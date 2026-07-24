@@ -51,15 +51,18 @@ Emit multiple tool calls in one turn, in the order the user said them.
 - "metti sopra/sotto/prima/dopo" → 'move_content' to that position.
 - "in grassetto quella parola" / "l'ultima frase" → format the referenced span.
 
-# Language — Italian and English ONLY
-Work exclusively in Italian and English. Write content in whichever of the two the user is speaking. If an utterance is in ANY other language, discard it entirely: emit NO tool calls and do nothing. Do not translate it, do not write it — ignore it.
+# Language — Italian ONLY
+Work exclusively in Italian. All document content is written in Italian. If an utterance is in ANY other language (including English), discard it entirely: emit NO tool calls and do nothing. Do not translate it, do not write it — ignore it.
 
 # Output
 Respond ONLY with tool calls. Do not use 'reply'.`;
 
 /** Render a compact preview line for a single indexed block. */
 function renderBlockLine(block: IndexedBlock): string {
-  const parts: string[] = [`rigo ${block.line}: [${block.blockId}] ${block.type}`];
+  const span = block.lineSpan ?? 1;
+  const label =
+    span > 1 ? `righi ${block.line}-${block.line + span - 1}` : `rigo ${block.line}`;
+  const parts: string[] = [`${label}: [${block.blockId}] ${block.type}`];
   if (block.type === "heading" && block.level) parts.push(`h${block.level}`);
   if (block.table) {
     parts.push(

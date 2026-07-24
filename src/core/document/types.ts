@@ -67,11 +67,13 @@ export interface IndexedBlock {
   /** Stable id, mirrored from the node's `attrs.blockId`. */
   readonly blockId: string;
   /**
-   * 1-based line number = position among top-level blocks. This is the number
-   * shown in the editor gutter and the handle the user references by voice
-   * ("al rigo 4"). Kept identical across UI, context, and resolver.
+   * 1-based number of the FIRST visual line this block occupies — the number
+   * shown in the gutter and the handle the user references by voice ("al rigo
+   * 4"). Measured from the rendered DOM; falls back to block position headless.
    */
   readonly line: number;
+  /** How many visual (wrapped) lines the block spans. Defaults to 1. */
+  readonly lineSpan?: number;
   readonly type: BlockType;
   /** Heading depth (1–6) when `type === 'heading'`. */
   readonly level?: number;

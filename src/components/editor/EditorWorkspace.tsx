@@ -18,7 +18,9 @@ import { LocalDocumentStore } from "@/storage/local-document-store";
 import type { JsonValue } from "@/lib/json";
 import { DocumentSheet } from "./DocumentSheet";
 import { MicButton } from "../voice/MicButton";
-import { LangToggle, type DictationLang } from "../voice/LangToggle";
+
+/** Dictation runs in Italian only. */
+const DICTATION_LANG = "it-IT";
 
 /** Single-document app for now; a stable id so autosave survives reloads. */
 const DOCUMENT_ID = "default";
@@ -42,7 +44,6 @@ export function EditorWorkspace() {
   const sttProviderRef = useRef<SttProvider | null>(null);
   const sessionRef = useRef<SttSession | null>(null);
   const storeRef = useRef<LocalDocumentStore>(new LocalDocumentStore());
-  const langRef = useRef<DictationLang>("it-IT");
 
   const [micOn, setMicOn] = useState(false);
   const [sttState, setSttState] = useState<SttState>("idle");
@@ -50,7 +51,6 @@ export function EditorWorkspace() {
   const [interim, setInterim] = useState("");
   const [supported, setSupported] = useState(true);
   const [saved, setSaved] = useState(false);
-  const [lang, setLang] = useState<DictationLang>("it-IT");
 
   // Build the controller + pipeline, restore autosaved content, and autosave
   // on every change — all bound to the editor's lifetime.
@@ -108,11 +108,11 @@ export function EditorWorkspace() {
     return () => sessionRef.current?.stop();
   }, []);
 
-  const openSession = useCallback((language: DictationLang) => {
+  const startListening = useCallback(() => {
     const provider = sttProviderRef.current;
     if (!provider || !provider.isSupported) return;
     const session = provider.createSession(
-      { lang: language },
+      { lang: DICTATION_LANG },
       {
         onInterim: (text) => setInterim(text),
         onFinal: (text) => {
@@ -125,12 +125,8 @@ export function EditorWorkspace() {
     );
     sessionRef.current = session;
     session.start();
-  }, []);
-
-  const startListening = useCallback(() => {
-    openSession(langRef.current);
     setMicOn(true);
-  }, [openSession]);
+  }, []);
 
   const stopListening = useCallback(() => {
     sessionRef.current?.stop();
@@ -145,20 +141,6 @@ export function EditorWorkspace() {
     else startListening();
   }, [micOn, startListening, stopListening]);
 
-  const changeLang = useCallback(
-    (next: DictationLang) => {
-      langRef.current = next;
-      setLang(next);
-      // Restart the session in the new language if currently listening.
-      if (sessionRef.current) {
-        sessionRef.current.stop();
-        sessionRef.current = null;
-        openSession(next);
-      }
-    },
-    [openSession],
-  );
-
   return (
     <div className="workspace">
       <DocumentSheet editor={editor} />
@@ -170,9 +152,7 @@ export function EditorWorkspace() {
         interim={interim}
         saved={saved}
         onToggle={toggleMic}
-      >
-        <LangToggle value={lang} onChange={changeLang} />
-      </MicButton>
+      />
     </div>
   );
 }

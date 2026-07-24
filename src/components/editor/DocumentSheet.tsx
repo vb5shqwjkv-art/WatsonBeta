@@ -2,54 +2,57 @@
 
 import { useEffect, useState } from "react";
 import { EditorContent, type Editor } from "@tiptap/react";
+import { computeLineLayout } from "@/editor/visual-lines";
 
 /**
- * The document surface — a real A4 page, paginated. It is the only thing the
- * user reads. Not user-editable (dictation drives all changes). Content flows
- * continuously; page-break markers are drawn at each A4 boundary and the sheet
- * grows a whole page at a time, so the document reads "per pagine".
+ * The document surface — a single continuous sheet (not paginated). Every
+ * rendered line, including each wrapped line inside a paragraph, is numbered in
+ * the left gutter. It is the only thing the user reads; not user-editable
+ * (dictation drives all changes).
  */
-
-// A4 at 96 dpi. Width is fixed so pagination is stable; height defines the
-// page boundary used for the break markers and the minimum sheet height.
-const PAGE_HEIGHT_PX = 1123;
-// Vertical padding of the sheet (top + bottom), see globals.css .page-sheet.
-const SHEET_VPAD_PX = 152;
-
 export function DocumentSheet({ editor }: { editor: Editor | null }) {
-  const [pages, setPages] = useState(1);
+  const [numbers, setNumbers] = useState<{ n: number; top: number }[]>([]);
+  const [gutterLeft, setGutterLeft] = useState(8);
 
   useEffect(() => {
     if (!editor) return;
-    const contentEl = editor.view.dom as HTMLElement;
+    const dom = editor.view.dom as HTMLElement;
+    let raf = 0;
 
-    const measure = () => {
-      const contentHeight = contentEl.scrollHeight + SHEET_VPAD_PX;
-      setPages(Math.max(1, Math.ceil(contentHeight / PAGE_HEIGHT_PX)));
+    const recompute = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const layout = computeLineLayout(dom);
+        const offsetTop = dom.offsetTop;
+        setNumbers(layout.numbers.map((l) => ({ n: l.n, top: offsetTop + l.top })));
+        setGutterLeft(Math.max(dom.offsetLeft - 56, 8));
+      });
     };
 
-    measure();
-    const observer = new ResizeObserver(measure);
-    observer.observe(contentEl);
-    return () => observer.disconnect();
+    recompute();
+    const observer = new ResizeObserver(recompute);
+    observer.observe(dom);
+    editor.on("update", recompute);
+    window.addEventListener("resize", recompute);
+
+    return () => {
+      cancelAnimationFrame(raf);
+      observer.disconnect();
+      editor.off("update", recompute);
+      window.removeEventListener("resize", recompute);
+    };
   }, [editor]);
 
   return (
-    <div className="pages-viewport">
-      <div
-        className="page-sheet"
-        style={{ minHeight: `${pages * PAGE_HEIGHT_PX}px` }}
-      >
-        {Array.from({ length: pages - 1 }, (_, i) => (
-          <div
-            key={i}
-            className="page-break"
-            style={{ top: `${(i + 1) * PAGE_HEIGHT_PX}px` }}
-            aria-hidden="true"
-          >
-            <span>Pagina {i + 2}</span>
-          </div>
-        ))}
+    <div className="sheet-scroll">
+      <div className="sheet">
+        <div className="line-gutter" aria-hidden="true">
+          {numbers.map((l) => (
+            <span key={l.n} style={{ top: `${l.top}px`, left: `${gutterLeft}px` }}>
+              {l.n}
+            </span>
+          ))}
+        </div>
         <EditorContent editor={editor} />
       </div>
     </div>

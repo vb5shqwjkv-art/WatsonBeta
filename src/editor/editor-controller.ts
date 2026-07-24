@@ -31,6 +31,7 @@ import {
   contentSpecToJSON,
 } from "./content-builder";
 import { applyTableOp, readTableModel, tableModelToJSON } from "./table-model";
+import { computeLineLayout, type LineLayout } from "./visual-lines";
 
 /**
  * ─────────────────────────────────────────────────────────────────────────
@@ -121,11 +122,41 @@ export class EditorController {
   }
 
   documentState(): DocumentState {
+    const index = buildIndex(this.editor.state.doc, this.version);
+    const layout = this.lineLayout();
+
+    // Remap each block's line/lineSpan to VISUAL lines measured from the DOM,
+    // so the AI's "rigo N" matches the numbers shown in the gutter.
+    const blocks = index.blocks.map((block) => {
+      const start = layout.blockStart.get(block.blockId);
+      if (start === undefined) return block;
+      return { ...block, line: start, lineSpan: layout.blockSpan.get(block.blockId) ?? 1 };
+    });
+
     return {
       snapshot: this.snapshot(),
-      index: buildIndex(this.editor.state.doc, this.version),
+      index: { ...index, blocks },
       selection: projectSelection(this.editor.state),
     };
+  }
+
+  /** Measure the visual-line layout from the rendered DOM (browser only). */
+  private lineLayout(): LineLayout {
+    try {
+      return computeLineLayout(this.editor.view.dom as HTMLElement);
+    } catch {
+      return { numbers: [], blockStart: new Map(), blockSpan: new Map() };
+    }
+  }
+
+  /** The block that contains a given visual line number, if any. */
+  private blockIdForVisualLine(line: number): string | null {
+    const layout = this.lineLayout();
+    for (const [blockId, start] of layout.blockStart) {
+      const span = layout.blockSpan.get(blockId) ?? 1;
+      if (line >= start && line < start + span) return blockId;
+    }
+    return null;
   }
 
   /**
@@ -275,14 +306,38 @@ export class EditorController {
     return { selection: { from, to }, lastBlockId: this.lastBlockId };
   }
 
+  /** Translate a visual-line position ("beforeLine 4") to a block position. */
+  private toBlockPosition(position: Position): Result<Position> {
+    if (position.at !== "beforeLine" && position.at !== "afterLine") {
+      return ok(position);
+    }
+    const blockId = this.blockIdForVisualLine(position.line);
+    if (!blockId) {
+      return err(appError("reference", `Il rigo ${position.line} non esiste.`));
+    }
+    return ok({
+      at: position.at === "beforeLine" ? "before" : "after",
+      blockId,
+    });
+  }
+
+  /** Resolve an insertion position, translating visual-line positions first. */
+  private resolveInsertPos(position: Position): Result<number> {
+    const translated = this.toBlockPosition(position);
+    if (!translated.ok) return translated;
+    return resolveInsertPosition(
+      this.editor.state.doc,
+      translated.value,
+      this.context(),
+    );
+  }
+
   private applyOne(op: Operation): Result<string> {
-    const doc = this.editor.state.doc;
-    const ctx = this.context();
     const label = describeOperation(op);
 
     switch (op.type) {
       case "insert_content": {
-        const pos = resolveInsertPosition(doc, op.position, ctx);
+        const pos = this.resolveInsertPos(op.position);
         if (!pos.ok) return pos;
         const content = contentSpecToJSON(op.content);
         if (!this.insertContent(pos.value, content)) {
@@ -386,7 +441,7 @@ export class EditorController {
       }
 
       case "create_table": {
-        const pos = resolveInsertPosition(doc, op.position, ctx);
+        const pos = this.resolveInsertPos(op.position);
         if (!pos.ok) return pos;
         this.insertContent(pos.value, buildTableJSON(op));
         this.trackLastBlockAt(pos.value);
@@ -394,7 +449,7 @@ export class EditorController {
       }
 
       case "create_list": {
-        const pos = resolveInsertPosition(doc, op.position, ctx);
+        const pos = this.resolveInsertPos(op.position);
         if (!pos.ok) return pos;
         this.insertContent(pos.value, buildListJSON(op));
         this.trackLastBlockAt(pos.value);
@@ -445,6 +500,17 @@ export class EditorController {
   private resolveEditRange(target: TargetRef): Result<DocRange> {
     const doc = this.editor.state.doc;
     const ctx = this.context();
+
+    // A visual "rigo N" is resolved against the measured layout to the block
+    // that contains that line; block editing is reliable, sub-line is not.
+    if (target.kind === "line") {
+      const blockId = this.blockIdForVisualLine(target.line);
+      if (!blockId) {
+        return err(appError("reference", `Il rigo ${target.line} non esiste.`));
+      }
+      return resolveTargetRange(doc, { kind: "block", blockId }, ctx);
+    }
+
     const direct = resolveTargetRange(doc, target, ctx);
     if (direct.ok) return direct;
 
@@ -473,6 +539,11 @@ export class EditorController {
     const range = this.resolveEditRange(target);
     if (!range.ok) return range;
 
+    // Translate a visual-line destination to a stable block reference BEFORE
+    // deleting, since deletion shifts the line numbering.
+    const destRef = this.toBlockPosition(destination);
+    if (!destRef.ok) return destRef;
+
     const slice = doc.slice(range.value.from, range.value.to);
     const content = slice.content.toJSON() as JSONContent[] | null;
     if (!content || content.length === 0) {
@@ -487,7 +558,7 @@ export class EditorController {
 
     const dest = resolveInsertPosition(
       this.editor.state.doc,
-      destination,
+      destRef.value,
       this.context(),
     );
     if (!dest.ok) return dest;
