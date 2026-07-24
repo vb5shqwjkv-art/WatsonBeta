@@ -62,21 +62,35 @@ function renderBlockLine(block: IndexedBlock): string {
   return `${parts.join(" ")} — "${preview}"`;
 }
 
+/** Counts of blocks omitted above/below the rendered window (see Context Manager). */
+export interface OutlineWindow {
+  readonly hiddenBefore?: number;
+  readonly hiddenAfter?: number;
+}
+
 /**
  * Render the live document context that is appended to the model turn. Kept
- * terse and id-forward so the model can ground references cheaply.
+ * terse and id-forward so the model can ground references cheaply. The `index`
+ * passed here may already be a window around the cursor (for very long
+ * documents); `hiddenBefore/After` tell the model that unshown blocks exist so
+ * it never assumes it can see the whole document.
  */
 export function renderDocumentContext(
   index: DocumentIndex,
   selection: SelectionState,
-  options: { maxBlocks?: number } = {},
+  window: OutlineWindow = {},
 ): string {
-  const maxBlocks = options.maxBlocks ?? 200;
-  const blocks = index.blocks.slice(0, maxBlocks);
-  const outline =
-    blocks.length === 0
-      ? "(the document is empty)"
-      : blocks.map(renderBlockLine).join("\n");
+  const before = window.hiddenBefore ?? 0;
+  const after = window.hiddenAfter ?? 0;
+
+  const lines: string[] = [];
+  if (before > 0) lines.push(`… (${before} earlier block(s) not shown)`);
+  if (index.blocks.length === 0 && before === 0 && after === 0) {
+    lines.push("(the document is empty)");
+  } else {
+    lines.push(...index.blocks.map(renderBlockLine));
+  }
+  if (after > 0) lines.push(`… (${after} later block(s) not shown)`);
 
   const sel = selection.anchorBlockId
     ? selection.isCollapsed
@@ -84,14 +98,9 @@ export function renderDocumentContext(
       : `selection from ${selection.anchorBlockId} to ${selection.headBlockId}: "${selection.selectedText.slice(0, 200)}"`
     : "no active selection";
 
-  const truncated =
-    index.blocks.length > blocks.length
-      ? `\n… (${index.blocks.length - blocks.length} more blocks not shown)`
-      : "";
-
   return `# Current document (version ${index.docVersion})
 Blocks are listed top-to-bottom as: [blockId] type — "text preview".
-${outline}${truncated}
+${lines.join("\n")}
 
 # Selection
 ${sel}`;

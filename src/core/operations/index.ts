@@ -58,6 +58,28 @@ export function isMutating(op: Operation): boolean {
   return op.type !== "reply";
 }
 
+/**
+ * Whether this operation irreversibly removes or overwrites existing content.
+ * The Editor Controller uses this to gate confirmation for risky edits when the
+ * model's confidence is low — the "threshold before destructive actions"
+ * mitigation for mis-heard speech. (Every such op is still covered by semantic
+ * undo; this is a guard against silent data loss, not a substitute for undo.)
+ */
+export function isDestructive(op: Operation): boolean {
+  switch (op.type) {
+    case "delete_content":
+    case "replace_content":
+    case "restore_version":
+      return true;
+    case "modify_table":
+      return (
+        op.operation.op === "deleteRow" || op.operation.op === "deleteColumn"
+      );
+    default:
+      return false;
+  }
+}
+
 /** A short human-readable description, used for checkpoint labels and logs. */
 export function describeOperation(op: Operation): string {
   switch (op.type) {

@@ -1,11 +1,20 @@
 import { describe, expect, it } from "vitest";
 import {
   describeOperation,
+  isDestructive,
   isGenerativeOperation,
   isMutating,
   parseOperation,
   parseOperations,
 } from "@/core/operations";
+import type { Operation } from "@/core/operations";
+
+/** Parse-or-throw helper for building operation fixtures in tests. */
+function op(input: unknown): Operation {
+  const r = parseOperation(input);
+  if (!r.ok) throw new Error(r.error.message);
+  return r.value;
+}
 
 describe("parseOperation", () => {
   it("accepts a valid insert_content op and applies defaults", () => {
@@ -89,5 +98,21 @@ describe("operation classifiers", () => {
     const table = parseOperation({ type: "create_table", rows: 2, cols: 3 });
     expect(table.ok).toBe(true);
     if (table.ok) expect(describeOperation(table.value)).toBe("Create 2×3 table");
+  });
+
+  it("flags destructive operations for the confirmation policy", () => {
+    expect(isDestructive(op({ type: "delete_content", target: { kind: "selection" } }))).toBe(true);
+    expect(isDestructive(op({ type: "replace_content", target: { kind: "selection" }, content: { text: "x" } }))).toBe(true);
+    expect(isDestructive(op({ type: "restore_version", versionId: "ver_1" }))).toBe(true);
+    expect(
+      isDestructive(op({ type: "modify_table", tableId: "tbl_1", operation: { op: "deleteRow", at: 0 } })),
+    ).toBe(true);
+
+    // Non-destructive: additive / reversible edits.
+    expect(isDestructive(op({ type: "insert_content", content: { text: "x" } }))).toBe(false);
+    expect(
+      isDestructive(op({ type: "modify_table", tableId: "tbl_1", operation: { op: "addRow" } })),
+    ).toBe(false);
+    expect(isDestructive(op({ type: "format_text", target: { kind: "selection" }, marks: [{ type: "bold" }] }))).toBe(false);
   });
 });
