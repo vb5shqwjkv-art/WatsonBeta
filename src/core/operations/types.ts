@@ -4,6 +4,7 @@ import type {
   ClearAnnotationsSchema,
   ClearDocumentSchema,
   ContentSpecSchema,
+  CreateComparisonSchema,
   CreateListSchema,
   CreateTableSchema,
   DeleteContentSchema,
@@ -49,6 +50,7 @@ export type SetFontSizeOp = z.infer<typeof SetFontSizeSchema>;
 export type CreateTableOp = z.infer<typeof CreateTableSchema>;
 export type ModifyTableOp = z.infer<typeof ModifyTableSchema>;
 export type CreateListOp = z.infer<typeof CreateListSchema>;
+export type CreateComparisonOp = z.infer<typeof CreateComparisonSchema>;
 export type TransformContentOp = z.infer<typeof TransformContentSchema>;
 export type SummarizeOp = z.infer<typeof SummarizeSchema>;
 export type UndoOp = z.infer<typeof UndoSchema>;

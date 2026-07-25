@@ -6,6 +6,7 @@ import {
   AnnotateSchema,
   ClearAnnotationsSchema,
   ClearDocumentSchema,
+  CreateComparisonSchema,
   CreateListSchema,
   CreateTableSchema,
   DeleteContentSchema,
@@ -115,6 +116,12 @@ const REGISTRY: readonly ToolSpec[] = [
     description:
       "Create a bulleted, numbered, or checklist list from items. Use for 'make a list', 'turn these into bullet points', 'add a checklist'.",
     schema: CreateListSchema as unknown as OpObject,
+  },
+  {
+    name: "create_comparison",
+    description:
+      "Lay the page out into N equal side-by-side COLUMNS (2–10) to compare things — NOT a table. Use for 'compariamo X e Y', 'facciamo il confronto tra questi argomenti', 'metti a confronto quattro cose'. Set columns to the count and titles to their names. Afterwards, write into a specific column via insert_content with position { at: 'inColumn', columnId } so text stays within that column.",
+    schema: CreateComparisonSchema as unknown as OpObject,
   },
   {
     name: "transform_content",

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  buildComparisonJSON,
   buildListJSON,
   buildTableJSON,
   contentSpecToJSON,
@@ -81,6 +82,39 @@ describe("buildListJSON", () => {
       type: "taskItem",
       attrs: { checked: false },
     });
+  });
+});
+
+describe("buildComparisonJSON", () => {
+  it("builds N equal columns, each titled and ready for content", () => {
+    const comp = buildComparisonJSON(
+      op({
+        type: "create_comparison",
+        columns: 3,
+        titles: ["A", "B", "C"],
+      }) as never,
+    );
+    expect(comp.type).toBe("comparison");
+    expect(comp.content).toHaveLength(3);
+
+    const first = comp.content?.[0];
+    expect(first?.type).toBe("comparisonColumn");
+    // Bold title paragraph, then an empty paragraph for content to flow into.
+    expect(first?.content).toHaveLength(2);
+    expect(first?.content?.[0]?.content?.[0]).toMatchObject({
+      type: "text",
+      text: "A",
+      marks: [{ type: "bold" }],
+    });
+    expect(first?.content?.[1]).toMatchObject({ type: "paragraph" });
+  });
+
+  it("builds untitled columns with a single empty paragraph", () => {
+    const comp = buildComparisonJSON(
+      op({ type: "create_comparison", columns: 2 }) as never,
+    );
+    expect(comp.content).toHaveLength(2);
+    expect(comp.content?.[0]?.content).toHaveLength(1);
   });
 });
 

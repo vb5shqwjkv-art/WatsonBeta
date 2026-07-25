@@ -118,6 +118,8 @@ export function describeOperation(op: Operation): string {
       return `Table: ${op.operation.op}`;
     case "create_list":
       return `Create ${op.listKind} list (${op.items.length} items)`;
+    case "create_comparison":
+      return `Create comparison (${op.columns} columns)`;
     case "transform_content":
       return `Transform: ${op.instruction}`;
     case "summarize":

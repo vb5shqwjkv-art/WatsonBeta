@@ -239,6 +239,35 @@ body {
   pointer-events: none;
 }
 
+/* Comparison — equal side-by-side columns (not a table) */
+.ProseMirror .comparison {
+  display: flex;
+  align-items: stretch;
+  margin: 0.5em 0;
+}
+.ProseMirror .comparison-column {
+  flex: 1 1 0;
+  min-width: 0; /* let text wrap within the column instead of overflowing */
+  padding: 0 18px;
+}
+.ProseMirror .comparison-column:first-child {
+  padding-left: 0;
+}
+.ProseMirror .comparison-column:last-child {
+  padding-right: 0;
+}
+/* A thin rule between columns — reads as columns, not a boxed table grid. */
+.ProseMirror .comparison-column + .comparison-column {
+  border-left: 1px solid var(--color-border);
+}
+.ProseMirror .comparison-column > p {
+  margin: 0 0 0.35em;
+}
+.ProseMirror .comparison-column > p:first-child {
+  /* The column's title line. */
+  margin-bottom: 0.5em;
+}
+
 /* Task lists */
 .ProseMirror ul[data-type="taskList"] {
   list-style: none;

@@ -28,6 +28,7 @@ import {
   type ResolveContext,
 } from "./reference-resolver";
 import {
+  buildComparisonJSON,
   buildListJSON,
   buildTableJSON,
   contentSpecToJSON,
@@ -402,6 +403,51 @@ export class EditorController {
   }
 
   /**
+   * Append dictated text INTO a comparison column (by its blockId), flowing
+   * within that column so it wraps inside the column's width instead of
+   * spanning the page. Mirrors {@link appendText} but scoped to the column.
+   */
+  private appendToColumn(columnId: string, text: string, newBlock: boolean): boolean {
+    const hit = findBlockById(this.editor.state.doc, columnId);
+    if (!hit || hit.node.type.name !== "comparisonColumn") return false;
+
+    const colEnd = hit.pos + hit.node.nodeSize;
+    const lastChild = hit.node.lastChild;
+    const canFlow =
+      !newBlock &&
+      !!lastChild &&
+      lastChild.type.name === "paragraph" &&
+      !lastChild.attrs.reservedSpace;
+
+    if (canFlow) {
+      const existing = lastChild!.textContent;
+      const needsSpace =
+        existing.length > 0 &&
+        !/\s$/.test(existing) &&
+        text.length > 0 &&
+        !/^[\s.,;:!?)]/.test(text);
+      // colEnd-2: just inside the last paragraph's close (colEnd-1 is the
+      // column's own close token).
+      return this.insertUnmarkedText(colEnd - 2, (needsSpace ? " " : "") + text);
+    }
+
+    // New line inside the column — close the previous sentence with a period.
+    if (newBlock && lastChild && lastChild.type.name === "paragraph") {
+      const t = lastChild.textContent.trimEnd();
+      if (t.length > 0 && !/[.!?…:;]$/.test(t)) {
+        this.insertUnmarkedText(colEnd - 2, ".");
+      }
+    }
+    const after = findBlockById(this.editor.state.doc, columnId);
+    if (!after) return false;
+    const insertAt = after.pos + after.node.nodeSize - 1;
+    return this.editor
+      .chain()
+      .insertContentAt(insertAt, contentSpecToJSON({ text }))
+      .run();
+  }
+
+  /**
    * Insert inline text and strip any marks it inherited from the boundary, so a
    * flowing continuation (or an auto-inserted period) is plain and never picks
    * up the colour/highlight of the preceding word.
@@ -498,6 +544,20 @@ export class EditorController {
 
     switch (op.type) {
       case "insert_content": {
+        // Content aimed at a comparison column flows INSIDE that column.
+        if (op.position.at === "inColumn") {
+          if (
+            !this.appendToColumn(
+              op.position.columnId,
+              op.content.text,
+              op.content.newBlock === true,
+            )
+          ) {
+            return err(appError("reference", "La colonna non è stata trovata."));
+          }
+          this.lastBlockId = op.position.columnId;
+          return ok(label);
+        }
         // Plain text added at the end of the document FLOWS by default —
         // continuing the current paragraph — so dictation reads as prose. A
         // new line happens only on an explicit break (content.newBlock).
@@ -651,6 +711,14 @@ export class EditorController {
         const pos = this.resolveInsertPos(op.position);
         if (!pos.ok) return pos;
         this.insertContent(pos.value, buildListJSON(op));
+        this.trackLastBlockAt(pos.value);
+        return ok(label);
+      }
+
+      case "create_comparison": {
+        const pos = this.resolveInsertPos(op.position);
+        if (!pos.ok) return pos;
+        this.insertContent(pos.value, buildComparisonJSON(op));
         this.trackLastBlockAt(pos.value);
         return ok(label);
       }

@@ -175,6 +175,31 @@ function tableOf(node: PMNode): Table {
   return new Table({ rows, width: { size: 100, type: WidthType.PERCENTAGE } });
 }
 
+/** A comparison exports as a borderless single-row table: side-by-side columns. */
+function comparisonToDocx(node: PMNode): Table {
+  const noBorder = { style: BorderStyle.NONE, size: 0, color: "FFFFFF" };
+  const cells =
+    node.content?.map(
+      (col) =>
+        new TableCell({
+          children: (col.content ?? []).flatMap((b) => blockToDocx(b)),
+          margins: { top: 40, bottom: 40, left: 120, right: 120 },
+        }),
+    ) ?? [];
+  return new Table({
+    rows: [new TableRow({ children: cells })],
+    width: { size: 100, type: WidthType.PERCENTAGE },
+    borders: {
+      top: noBorder,
+      bottom: noBorder,
+      left: noBorder,
+      right: noBorder,
+      insideHorizontal: noBorder,
+      insideVertical: noBorder,
+    },
+  });
+}
+
 function blockToDocx(node: PMNode): (Paragraph | Table)[] {
   switch (node.type) {
     case "heading": {
@@ -204,6 +229,8 @@ function blockToDocx(node: PMNode): (Paragraph | Table)[] {
       return listParagraphs(node, false);
     case "table":
       return [tableOf(node)];
+    case "comparison":
+      return [comparisonToDocx(node)];
     case "horizontalRule":
       return [
         new Paragraph({

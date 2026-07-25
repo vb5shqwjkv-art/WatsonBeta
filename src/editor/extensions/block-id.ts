@@ -34,6 +34,8 @@ export const DEFAULT_BLOCK_ID_TYPES = [
   "table",
   "horizontalRule",
   "image",
+  "comparison",
+  "comparisonColumn",
 ];
 
 const blockIdPluginKey = new PluginKey("blockId");

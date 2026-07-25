@@ -70,6 +70,9 @@ export const PositionSchema = z.discriminatedUnion("at", [
   z
     .object({ at: z.literal("afterLine"), line: z.number().int().min(1) })
     .describe("After the block at this 1-based line number."),
+  z
+    .object({ at: z.literal("inColumn"), columnId: z.string() })
+    .describe("Append inside a comparison column, by its blockId (from the index)."),
 ]);
 
 /* ── Content ─────────────────────────────────────────────────────────────── */
@@ -210,6 +213,21 @@ export const CreateListSchema = z.object({
   items: z.array(z.string()).min(1),
 });
 
+export const CreateComparisonSchema = z.object({
+  type: z.literal("create_comparison"),
+  position: PositionSchema.default({ at: "documentEnd" }),
+  columns: z
+    .number()
+    .int()
+    .min(2)
+    .max(10)
+    .describe("How many things are being compared (2–10 side-by-side columns)."),
+  titles: z
+    .array(z.string())
+    .optional()
+    .describe("The heading of each column, in order — the items being compared."),
+});
+
 /* ── Generative operations (re-invoke the LLM on a focused region) ───────── */
 
 export const TransformContentSchema = z.object({
@@ -295,6 +313,7 @@ export const OperationSchema = z.discriminatedUnion("type", [
   CreateTableSchema,
   ModifyTableSchema,
   CreateListSchema,
+  CreateComparisonSchema,
   TransformContentSchema,
   SummarizeSchema,
   AnnotateSchema,
@@ -318,6 +337,7 @@ export const OPERATION_TYPES = [
   "create_table",
   "modify_table",
   "create_list",
+  "create_comparison",
   "transform_content",
   "summarize",
   "annotate",

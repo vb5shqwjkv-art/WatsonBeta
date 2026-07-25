@@ -1,5 +1,10 @@
 import type { JSONContent } from "@tiptap/core";
-import type { ContentSpec, CreateListOp, CreateTableOp } from "@/core/operations";
+import type {
+  ContentSpec,
+  CreateComparisonOp,
+  CreateListOp,
+  CreateTableOp,
+} from "@/core/operations";
 
 /**
  * Deterministic construction of ProseMirror/Tiptap JSON from the AI's
@@ -59,6 +64,29 @@ export function buildTableJSON(op: CreateTableOp): JSONContent {
     rows.push({ type: "tableRow", content: cells });
   }
   return { type: "table", content: rows };
+}
+
+/**
+ * Build a comparison: N equal side-by-side columns. Each column starts with its
+ * bold title (when given) and an empty paragraph that later dictation flows into
+ * — so content stays within the column instead of spanning the page.
+ */
+export function buildComparisonJSON(op: CreateComparisonOp): JSONContent {
+  const columns: JSONContent[] = [];
+  for (let i = 0; i < op.columns; i++) {
+    const title = op.titles?.[i]?.trim();
+    const content: JSONContent[] = [];
+    if (title) {
+      content.push({
+        type: "paragraph",
+        content: [{ type: "text", text: title, marks: [{ type: "bold" }] }],
+      });
+    }
+    // Always leave an empty paragraph for content to flow into.
+    content.push({ type: "paragraph" });
+    columns.push({ type: "comparisonColumn", content });
+  }
+  return { type: "comparison", content: columns };
 }
 
 /** Build a bullet / ordered / task list from item texts. */

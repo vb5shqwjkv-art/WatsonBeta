@@ -82,6 +82,34 @@ describe("buildIndex", () => {
     expect(index.blocks.map((b) => b.line)).toEqual([1, 2, 3, 4]);
   });
 
+  it("summarizes a comparison's columns for targeting", () => {
+    const d = doc([
+      {
+        type: "comparison",
+        attrs: { blockId: "blk_cmp" },
+        content: [
+          {
+            type: "comparisonColumn",
+            attrs: { blockId: "blk_col1" },
+            content: [para("blk_t1", "Osso spugnoso"), para("blk_b1", "leggero")],
+          },
+          {
+            type: "comparisonColumn",
+            attrs: { blockId: "blk_col2" },
+            content: [para("blk_t2", "Osso compatto"), para("blk_b2", "denso")],
+          },
+        ],
+      },
+    ]);
+    const index = buildIndex(d, 0);
+    const comp = index.blocks.find((b) => b.blockId === "blk_cmp");
+    expect(comp?.type).toBe("comparison");
+    expect(comp?.comparison?.columns).toEqual([
+      { columnId: "blk_col1", title: "Osso spugnoso" },
+      { columnId: "blk_col2", title: "Osso compatto" },
+    ]);
+  });
+
   it("summarizes lists and tables for targeting", () => {
     const index = buildIndex(sampleDoc(), 0);
     const list = index.blocks.find((b) => b.blockId === "blk_l");

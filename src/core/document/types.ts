@@ -30,6 +30,7 @@ export const BlockType = {
   Blockquote: "blockquote",
   Image: "image",
   HorizontalRule: "horizontalRule",
+  Comparison: "comparison",
 } as const;
 
 export type BlockType = (typeof BlockType)[keyof typeof BlockType];
@@ -84,6 +85,7 @@ export interface IndexedBlock {
   /** Present for structural blocks that carry their own sub-index. */
   readonly table?: TableOutline;
   readonly list?: ListOutline;
+  readonly comparison?: ComparisonOutline;
 }
 
 /** Structural summary of a table so the model can target rows/cols/cells. */
@@ -100,6 +102,13 @@ export interface ListOutline {
   readonly ordered: boolean;
   readonly task: boolean;
   readonly itemCount: number;
+}
+
+/** Structural summary of a comparison so the model can target each column. */
+export interface ComparisonOutline {
+  readonly comparisonId: string;
+  /** One entry per side-by-side column, in order. */
+  readonly columns: readonly { readonly columnId: string; readonly title: string }[];
 }
 
 /**

@@ -1,6 +1,7 @@
 import type { Node as PMNode } from "@tiptap/pm/model";
 import {
   BlockType,
+  type ComparisonOutline,
   type DocumentIndex,
   type IndexedBlock,
   type ListOutline,
@@ -26,6 +27,7 @@ const NODE_TYPE_MAP: Record<string, BlockType> = {
   blockquote: BlockType.Blockquote,
   image: BlockType.Image,
   horizontalRule: BlockType.HorizontalRule,
+  comparison: BlockType.Comparison,
 };
 
 function preview(node: PMNode): string {
@@ -49,6 +51,18 @@ function tableOutline(node: PMNode, blockId: string): TableOutline {
   }
 
   return { tableId: blockId, rows, cols, headers };
+}
+
+function comparisonOutline(node: PMNode, blockId: string): ComparisonOutline {
+  const columns: { columnId: string; title: string }[] = [];
+  node.forEach((col) => {
+    const columnId =
+      typeof col.attrs.blockId === "string" ? col.attrs.blockId : "";
+    // The title is the column's first line (its bold heading paragraph).
+    const title = col.firstChild ? col.firstChild.textContent.trim() : "";
+    columns.push({ columnId, title });
+  });
+  return { comparisonId: blockId, columns };
 }
 
 function listOutline(node: PMNode, blockId: string): ListOutline {
@@ -86,6 +100,10 @@ export function buildIndex(doc: PMNode, docVersion: number): DocumentIndex {
         type === BlockType.OrderedList ||
         type === BlockType.TaskList
           ? listOutline(node, blockId)
+          : undefined,
+      comparison:
+        type === BlockType.Comparison
+          ? comparisonOutline(node, blockId)
           : undefined,
     };
 

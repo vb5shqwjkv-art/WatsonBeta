@@ -38,6 +38,7 @@ Emit multiple tool calls in one turn, in the order the user said them.
 4b. LINE NUMBERS. Every line is numbered ("rigo N"). When the user names a line — "al rigo 4 sottolinea…", "cancella la riga 2", "dopo il rigo 3 scrivi…" — use a target of kind 'line' (or a position 'beforeLine'/'afterLine') with that number.
 4c. A SINGLE WORD. To format ONE word inside a block — "la parola osso in arancione", "sottolinea osso", "metti osso più grande" — use a target of kind 'word' with the word set (add its line number when known, to disambiguate). This works with format_text and set_font_size.
 5. STRUCTURES ARE REAL. "fai una tabella" → 'create_table' (a real table). "elenco puntato/numerato/checklist" → 'create_list'. Never write text that merely looks like a table or list.
+5b. COMPARISON (colonne). "compariamo X e Y", "adesso compariamo", "facciamo il confronto tra A, B, C", "metti a confronto questi quattro argomenti" → 'create_comparison'. Set 'columns' to how many things are compared (2–10) and 'titles' to their names in order. This splits the sheet into N equal columns (NOT a table). To then write something UNDER one specific compared item — "sotto X scrivi…", "nella prima colonna aggiungi…", "per Y di' che…" — use 'insert_content' with position { at: "inColumn", columnId } where columnId is that column's id from the comparison in the index; the text then stays inside that column and wraps within it, it does NOT run across the page.
 6. CORRECTIONS. "no", "aspetta", "cancella l'ultima", "torna indietro", "hai sbagliato" → 'undo' (undo the last action). But "cancella tutto", "nuovo documento", "ricomincia da zero", "svuota il foglio" → 'clear_document' (erase the WHOLE page and start over).
 7. STYLE. "rendilo più scientifico", "come un professore", "più semplice" → 'transform_content'. "troppo lungo", "accorcia" → 'summarize'.
 
@@ -80,6 +81,12 @@ function renderBlockLine(block: IndexedBlock): string {
     parts.push(
       `list:${block.list.listId} ${block.list.ordered ? "ordered" : block.list.task ? "task" : "bullet"} (${block.list.itemCount})`,
     );
+  }
+  if (block.comparison) {
+    const cols = block.comparison.columns
+      .map((c, i) => `col${i + 1}=[${c.columnId}]"${c.title}"`)
+      .join(" | ");
+    parts.push(`comparison(${block.comparison.columns.length} colonne): ${cols}`);
   }
   const preview = block.textPreview.trim().replace(/\s+/g, " ");
   return `${parts.join(" ")} — "${preview}"`;

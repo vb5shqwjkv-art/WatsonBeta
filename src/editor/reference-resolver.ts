@@ -215,6 +215,14 @@ export function resolveInsertPosition(
       if (!hit) return err(appError("reference", `Line ${position.line} not found.`));
       return ok(hit.pos + hit.node.nodeSize);
     }
+    case "inColumn": {
+      const hit = findBlockById(doc, position.columnId);
+      if (!hit || hit.node.type.name !== "comparisonColumn") {
+        return err(appError("reference", `Column ${position.columnId} not found.`));
+      }
+      // Just inside the column's closing token → the end of its content.
+      return ok(hit.pos + hit.node.nodeSize - 1);
+    }
     default: {
       const _never: never = position;
       return _never;
