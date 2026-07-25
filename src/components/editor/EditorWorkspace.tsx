@@ -22,7 +22,6 @@ import { LocalDocumentStore } from "@/storage/local-document-store";
 import { createDocumentStore } from "@/storage/create-store";
 import type {
   DocumentPersistence,
-  DocumentVersionMeta,
   PersistedDocument,
 } from "@/storage/document-persistence";
 import { isSupabaseConfigured } from "@/storage/supabase/config";
@@ -38,7 +37,7 @@ import { exportDocx, exportPdf, type ExportFormat } from "@/export/exporter";
 import { DocumentSheet } from "./DocumentSheet";
 import { MicButton } from "../voice/MicButton";
 import { ExportMenu } from "./ExportMenu";
-import { VersionsMenu } from "./VersionsMenu";
+import { NewDocumentButton } from "./NewDocumentButton";
 import { AuthBar } from "./AuthBar";
 
 /** Dictation runs in Italian only. */
@@ -46,15 +45,10 @@ const DICTATION_LANG = "it-IT";
 const DOCUMENT_ID = "default";
 const DOCUMENT_TITLE = "Documento";
 
-function defaultVersionLabel(): string {
-  return `Versione del ${new Date().toLocaleString("it-IT")}`;
-}
-
 /**
- * The whole application surface: document sheet + mic button, plus small export,
- * versions, and auth controls. Owns the editor, the dictation pipeline, autosave
- * (local or Supabase), and version history. Runs fully in local mode when
- * Supabase is not configured.
+ * The whole application surface: the document sheet + the mic button, plus small
+ * export, "new document", and auth controls. There is one always-current
+ * document, autosaved in real time (local or Supabase). No version history.
  */
 export function EditorWorkspace() {
   const editor = useEditor({
@@ -82,12 +76,8 @@ export function EditorWorkspace() {
   const [saved, setSaved] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
-  const [versions, setVersions] = useState<DocumentVersionMeta[]>([]);
-  const [storeLabel, setStoreLabel] = useState("Locale");
   const [user, setUser] = useState<AuthUser | null>(null);
   const supaConfigured = useRef(isSupabaseConfigured()).current;
-
-  /* ── Document snapshot + persistence helpers ─────────────────────────── */
 
   const currentPersisted = useCallback((): PersistedDocument | null => {
     const controller = controllerRef.current;
@@ -101,33 +91,6 @@ export function EditorWorkspace() {
     };
   }, []);
 
-  const refreshVersions = useCallback(async () => {
-    setVersions(await storeRef.current.listVersions(DOCUMENT_ID));
-  }, []);
-
-  const handleSaveVersion = useCallback(
-    async (label?: string) => {
-      const doc = currentPersisted();
-      if (!doc) return;
-      await storeRef.current.saveVersion(
-        DOCUMENT_ID,
-        label?.trim() || defaultVersionLabel(),
-        doc,
-      );
-      await refreshVersions();
-    },
-    [currentPersisted, refreshVersions],
-  );
-
-  const handleRestoreVersion = useCallback(async (versionId: string) => {
-    const restored = await storeRef.current.loadVersion(DOCUMENT_ID, versionId);
-    const ed = editorRef.current;
-    if (!restored || !ed) return;
-    ed.commands.setContent(restored.content as JSONContent, false);
-    annotationsRef.current.setAll(restored.annotations ?? []);
-    setAnnotations([...annotationsRef.current.all]);
-  }, []);
-
   const handleExport = useCallback(async (format: ExportFormat) => {
     const controller = controllerRef.current;
     if (!controller) return;
@@ -138,6 +101,12 @@ export function EditorWorkspace() {
     } finally {
       setExporting(false);
     }
+  }, []);
+
+  const handleClear = useCallback(() => {
+    annotationsRef.current.removeAll();
+    setAnnotations([]);
+    controllerRef.current?.clearDocument(); // emits update → autosaves the blank page
   }, []);
 
   /* ── Editor lifecycle: controller, pipeline, restore, autosave ───────── */
@@ -174,8 +143,6 @@ export function EditorWorkspace() {
       {
         onProcessingChange: setProcessing,
         onExport: (f) => void handleExport(f),
-        onSaveVersion: (label) => void handleSaveVersion(label),
-        onRestoreVersion: (id) => void handleRestoreVersion(id),
         onAnnotationsChanged: () => {
           setAnnotations([...annotationManager.all]);
           saveDoc();
@@ -195,13 +162,11 @@ export function EditorWorkspace() {
       };
     }
 
-    // Resolve the persistence backend (Supabase if signed in, else local),
-    // then restore the document and its versions.
+    // Pick the backend (Supabase if signed in, else local), then restore.
     void (async () => {
       const store = await createDocumentStore();
       if (disposed) return;
       storeRef.current = store;
-      setStoreLabel(store.label);
       const persisted = await store.load(DOCUMENT_ID);
       if (!disposed && persisted) {
         if (persisted.content) {
@@ -212,7 +177,6 @@ export function EditorWorkspace() {
           setAnnotations([...persisted.annotations]);
         }
       }
-      if (!disposed) await refreshVersions();
     })();
 
     editor.on("update", saveDoc);
@@ -221,9 +185,9 @@ export function EditorWorkspace() {
       editor.off("update", saveDoc);
       if (timer) clearTimeout(timer);
     };
-  }, [editor, currentPersisted, handleExport, handleSaveVersion, handleRestoreVersion, refreshVersions]);
+  }, [editor, currentPersisted, handleExport]);
 
-  /* ── Auth ────────────────────────────────────────────────────────────── */
+  /* ── Auth (only when Supabase is configured) ─────────────────────────── */
 
   useEffect(() => {
     if (!supaConfigured) return;
@@ -231,11 +195,9 @@ export function EditorWorkspace() {
     const unsubscribe = onAuthStateChange(async (nextUser) => {
       setUser(nextUser);
       storeRef.current = await createDocumentStore();
-      setStoreLabel(storeRef.current.label);
-      await refreshVersions();
     });
     return unsubscribe;
-  }, [supaConfigured, refreshVersions]);
+  }, [supaConfigured]);
 
   /* ── Speech ──────────────────────────────────────────────────────────── */
 
@@ -291,12 +253,7 @@ export function EditorWorkspace() {
         onSignOut={handleSignOut}
       />
       <div className="top-right-controls">
-        <VersionsMenu
-          versions={versions}
-          storeLabel={storeLabel}
-          onSave={(label) => void handleSaveVersion(label)}
-          onRestore={(id) => void handleRestoreVersion(id)}
-        />
+        <NewDocumentButton onClear={handleClear} />
         <ExportMenu onExport={handleExport} busy={exporting} />
       </div>
       <DocumentSheet editor={editor} annotations={annotations} />

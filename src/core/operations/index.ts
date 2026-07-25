@@ -59,8 +59,7 @@ const NON_MUTATING = new Set<OperationType>([
   "export_document",
   "annotate",
   "clear_annotations",
-  "save_version",
-  "restore_version",
+  "clear_document",
 ]);
 
 /** Whether this operation mutates the ProseMirror document. */
@@ -79,7 +78,7 @@ export function isDestructive(op: Operation): boolean {
   switch (op.type) {
     case "delete_content":
     case "replace_content":
-    case "restore_version":
+    case "clear_document":
       return true;
     case "modify_table":
       return (
@@ -125,10 +124,8 @@ export function describeOperation(op: Operation): string {
       return `Summarize (${op.targetLength})`;
     case "undo":
       return `Undo ${op.steps} step(s)`;
-    case "save_version":
-      return `Save version${op.label ? ` "${op.label}"` : ""}`;
-    case "restore_version":
-      return `Restore version ${op.versionId}`;
+    case "clear_document":
+      return "Clear document";
     case "export_document":
       return `Export ${op.format.toUpperCase()}`;
     case "annotate":

@@ -181,17 +181,20 @@ failures.
 - Triggered by the top-corner export control **or by voice** ("esporta in PDF",
   "salvalo come Word") via the `export_document` operation.
 
-**Auth, cloud persistence & version history — Phase 4 (done):**
+**Real-time autosave, "Nuovo", auth — Phase 4 (done):**
 
-- **Persistence port is now async** with version history. `LocalDocumentStore`
-  (localStorage) and `SupabaseDocumentStore` (Postgres) are interchangeable; the
-  app picks Supabase for the signed-in user and localStorage otherwise, so it
-  runs fully in **local mode** when Supabase isn't configured.
+- **One always-current document, autosaved in real time.** The async persistence
+  port has two interchangeable backends: `LocalDocumentStore` (localStorage) and
+  `SupabaseDocumentStore` (Postgres). The app picks Supabase for the signed-in
+  user and localStorage otherwise, so it runs fully in **local mode** with no
+  account. There is intentionally **no version history** — the saved state is
+  always the current page.
+- **"Nuovo"** erases everything (content + annotations + autosave) for a fresh
+  page — two-click confirm, or by voice ("cancella tutto", "ricomincia da zero",
+  `clear_document`). The typical loop is: dictate → download the PDF → Nuovo.
 - **Supabase Auth** (email/password) via an inline sign-in bar, shown only when
-  configured. `supabase/schema.sql` defines documents + versions with
+  configured. `supabase/schema.sql` defines the documents table with
   owner-scoped Row-Level Security.
-- **Version history**: save a named snapshot and restore any earlier one, from
-  the Versions menu or by voice (`save_version` / `restore_version`).
 - Autosave and annotations persist to whichever backend is active.
 
 Roadmap:

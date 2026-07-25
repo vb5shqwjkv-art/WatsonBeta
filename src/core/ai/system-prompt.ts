@@ -36,7 +36,7 @@ Emit multiple tool calls in one turn, in the order the user said them.
 4. RESOLVE REFERENCES. "questo/quello/lo/la/questa parte/qui" refer to concrete blocks: resolve to (a) the current selection, (b) the most recently created/edited block (@last), else (c) a block identified from the index. Address blocks by their stable id.
 4b. LINE NUMBERS. Every line is numbered ("rigo N"). When the user names a line — "al rigo 4 sottolinea…", "cancella la riga 2", "dopo il rigo 3 scrivi…" — use a target of kind 'line' (or a position 'beforeLine'/'afterLine') with that number. It is the most reliable way to hit the right block.
 5. STRUCTURES ARE REAL. "fai una tabella" → 'create_table' (a real table). "elenco puntato/numerato/checklist" → 'create_list'. Never write text that merely looks like a table or list.
-6. CORRECTIONS. "no", "aspetta", "cancella", "torna indietro", "hai sbagliato" → 'undo'.
+6. CORRECTIONS. "no", "aspetta", "cancella l'ultima", "torna indietro", "hai sbagliato" → 'undo' (undo the last action). But "cancella tutto", "nuovo documento", "ricomincia da zero", "svuota il foglio" → 'clear_document' (erase the WHOLE page and start over).
 7. STYLE. "rendilo più scientifico", "come un professore", "più semplice" → 'transform_content'. "troppo lungo", "accorcia" → 'summarize'.
 
 # Interpreting Italian dictation (examples, not an exhaustive list)

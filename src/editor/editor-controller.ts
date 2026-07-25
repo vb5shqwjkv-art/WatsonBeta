@@ -252,12 +252,10 @@ export class EditorController {
       }
     }
 
-    // A new checkpoint is recorded only for *forward* edits. Meta ops (undo,
-    // restore_version) manage the version/history themselves via
-    // restoreSnapshot — checkpointing them would corrupt the undo stack.
-    const forwardEdit = applied.some(
-      (op) => op.type !== "undo" && op.type !== "restore_version",
-    );
+    // A new checkpoint is recorded only for *forward* edits. `undo` manages the
+    // version/history itself via restoreSnapshot — checkpointing it would
+    // corrupt the undo stack.
+    const forwardEdit = applied.some((op) => op.type !== "undo");
     if (forwardEdit) {
       this.version += 1;
       this.checkpoints.push({
@@ -361,11 +359,19 @@ export class EditorController {
     return ok(steps);
   }
 
-  /** Replace the whole document with a snapshot (undo / version restore). */
+  /** Replace the whole document with a snapshot (undo). */
   restoreSnapshot(snapshot: DocumentSnapshot): void {
     this.editor.commands.setContent(snapshot.content as JSONContent, false);
     this.title = snapshot.title;
     this.version = snapshot.docVersion;
+  }
+
+  /** Erase the whole document and reset history — a fresh, blank page. */
+  clearDocument(): void {
+    this.editor.commands.clearContent(true);
+    this.version = 0;
+    this.lastBlockId = null;
+    this.checkpoints.clear();
   }
 
   /* ── Per-operation application ──────────────────────────────────────── */
@@ -552,10 +558,9 @@ export class EditorController {
         return res.ok ? ok(label) : res;
       }
 
-      case "save_version":
-      case "restore_version":
-        // Versioning is a storage action handled by the pipeline.
-        return err(appError("unsupported", "Versioning is handled by the pipeline."));
+      case "clear_document":
+        // A full reset is handled by the pipeline (content + annotations).
+        return err(appError("unsupported", "Clear is handled by the pipeline."));
 
       case "transform_content":
       case "summarize":

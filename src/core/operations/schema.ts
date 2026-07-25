@@ -217,17 +217,8 @@ export const UndoSchema = z.object({
   steps: z.number().int().min(1).default(1),
 });
 
-export const SaveVersionSchema = z.object({
-  type: z.literal("save_version"),
-  label: z
-    .string()
-    .optional()
-    .describe("A name for the saved version, e.g. 'bozza'."),
-});
-
-export const RestoreVersionSchema = z.object({
-  type: z.literal("restore_version"),
-  versionId: z.string(),
+export const ClearDocumentSchema = z.object({
+  type: z.literal("clear_document"),
 });
 
 export const AnnotateSchema = z.object({
@@ -284,8 +275,7 @@ export const OperationSchema = z.discriminatedUnion("type", [
   AnnotateSchema,
   ClearAnnotationsSchema,
   UndoSchema,
-  SaveVersionSchema,
-  RestoreVersionSchema,
+  ClearDocumentSchema,
   ExportDocumentSchema,
   ReplySchema,
 ]);
@@ -308,8 +298,7 @@ export const OPERATION_TYPES = [
   "annotate",
   "clear_annotations",
   "undo",
-  "save_version",
-  "restore_version",
+  "clear_document",
   "export_document",
   "reply",
 ] as const;

@@ -31,8 +31,6 @@ export interface DictationHooks {
   onProcessingChange?(processing: boolean): void;
   onApplied?(result: TurnResult): void;
   onExport?(format: "pdf" | "docx"): void;
-  onSaveVersion?(label?: string): void;
-  onRestoreVersion?(versionId: string): void;
   onAnnotationsChanged?(): void;
   onError?(message: string): void;
 }
@@ -81,10 +79,10 @@ export class DictationPipeline {
       for (const op of outcome.operations) {
         if (op.type === "export_document") {
           this.hooks.onExport?.(op.format);
-        } else if (op.type === "save_version") {
-          this.hooks.onSaveVersion?.(op.label);
-        } else if (op.type === "restore_version") {
-          this.hooks.onRestoreVersion?.(op.versionId);
+        } else if (op.type === "clear_document") {
+          this.controller.clearDocument();
+          this.annotations.removeAll();
+          annotationsChanged = true;
         } else if (op.type === "annotate") {
           const blockId = this.controller.resolveBlockId(op.target);
           if (blockId) {
@@ -116,8 +114,7 @@ export class DictationPipeline {
       const editable = outcome.operations.filter(
         (op) =>
           op.type !== "export_document" &&
-          op.type !== "save_version" &&
-          op.type !== "restore_version" &&
+          op.type !== "clear_document" &&
           op.type !== "annotate" &&
           op.type !== "clear_annotations",
       );

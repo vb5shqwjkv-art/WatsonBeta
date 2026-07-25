@@ -5,6 +5,7 @@ import type { ToolDefinition } from "./providers/types";
 import {
   AnnotateSchema,
   ClearAnnotationsSchema,
+  ClearDocumentSchema,
   CreateListSchema,
   CreateTableSchema,
   DeleteContentSchema,
@@ -15,8 +16,6 @@ import {
   MoveContentSchema,
   ReplaceContentSchema,
   ReplySchema,
-  RestoreVersionSchema,
-  SaveVersionSchema,
   SetAlignmentSchema,
   SetBlockTypeSchema,
   SetFontSizeSchema,
@@ -136,10 +135,10 @@ const REGISTRY: readonly ToolSpec[] = [
     schema: UndoSchema as unknown as OpObject,
   },
   {
-    name: "restore_version",
+    name: "clear_document",
     description:
-      "Restore a previously saved version of the document. Use for 'restore the previous version', 'the earlier one was better'.",
-    schema: RestoreVersionSchema as unknown as OpObject,
+      "Erase the WHOLE document and start over from a blank page. Use for 'cancella tutto', 'nuovo documento', 'ricomincia da zero', 'svuota il foglio'.",
+    schema: ClearDocumentSchema as unknown as OpObject,
   },
   {
     name: "annotate",
@@ -151,12 +150,6 @@ const REGISTRY: readonly ToolSpec[] = [
     name: "clear_annotations",
     description: "Remove all arrows/annotations. Use for 'togli le frecce'.",
     schema: ClearAnnotationsSchema as unknown as OpObject,
-  },
-  {
-    name: "save_version",
-    description:
-      "Save a named snapshot (version) of the document. Use for 'salva una versione', 'salva questa bozza'. Pass a `label` if the user names it.",
-    schema: SaveVersionSchema as unknown as OpObject,
   },
   {
     name: "export_document",

@@ -20,20 +20,6 @@ create table if not exists public.documents (
 
 create index if not exists documents_owner_idx on public.documents (owner_id);
 
--- Named, restorable versions ("restore the previous version") --------------
-create table if not exists public.document_versions (
-  id           text primary key,                 -- ver_…
-  document_id  text not null references public.documents (id) on delete cascade,
-  label        text not null,
-  title        text not null default 'Documento',
-  content      jsonb not null,
-  annotations  jsonb not null default '[]'::jsonb,
-  created_at   timestamptz not null default now()
-);
-
-create index if not exists document_versions_doc_idx
-  on public.document_versions (document_id, created_at desc);
-
 -- Conversation log (transcripts + assistant actions) -----------------------
 create table if not exists public.conversation_messages (
   id           text primary key,                 -- msg_…
@@ -49,22 +35,12 @@ create index if not exists conversation_messages_doc_idx
 
 -- Row Level Security -------------------------------------------------------
 alter table public.documents enable row level security;
-alter table public.document_versions enable row level security;
 alter table public.conversation_messages enable row level security;
 
 create policy "owners manage their documents"
   on public.documents for all
   using (owner_id = auth.uid())
   with check (owner_id = auth.uid());
-
-create policy "owners access versions of their documents"
-  on public.document_versions for all
-  using (
-    exists (
-      select 1 from public.documents d
-      where d.id = document_id and d.owner_id = auth.uid()
-    )
-  );
 
 create policy "owners access messages of their documents"
   on public.conversation_messages for all

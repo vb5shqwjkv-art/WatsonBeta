@@ -137,7 +137,7 @@ describe("operation classifiers", () => {
   it("flags destructive operations for the confirmation policy", () => {
     expect(isDestructive(op({ type: "delete_content", target: { kind: "selection" } }))).toBe(true);
     expect(isDestructive(op({ type: "replace_content", target: { kind: "selection" }, content: { text: "x" } }))).toBe(true);
-    expect(isDestructive(op({ type: "restore_version", versionId: "ver_1" }))).toBe(true);
+    expect(isDestructive(op({ type: "clear_document" }))).toBe(true);
     expect(
       isDestructive(op({ type: "modify_table", tableId: "tbl_1", operation: { op: "deleteRow", at: 0 } })),
     ).toBe(true);

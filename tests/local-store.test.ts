@@ -24,7 +24,7 @@ const doc: PersistedDocument = {
 };
 
 describe("LocalDocumentStore", () => {
-  it("saves and loads a document", async () => {
+  it("saves and loads the current document", async () => {
     await store.save("default", doc);
     const loaded = await store.load("default");
     expect(loaded?.title).toBe("Documento");
@@ -35,18 +35,11 @@ describe("LocalDocumentStore", () => {
     expect(await store.load("default")).toBeNull();
   });
 
-  it("saves, lists, and restores versions (newest first)", async () => {
-    await store.saveVersion("default", "prima", doc);
-    await store.saveVersion("default", "seconda", doc);
-    const list = await store.listVersions("default");
-    expect(list.map((v) => v.label)).toEqual(["seconda", "prima"]);
-
-    const restored = await store.loadVersion("default", list[1]!.id);
-    expect(restored?.content).toEqual({ type: "doc", content: [] });
-  });
-
-  it("returns null for a missing version", async () => {
-    expect(await store.loadVersion("default", "ver_missing")).toBeNull();
+  it("overwrites the single current document on each save", async () => {
+    await store.save("default", doc);
+    await store.save("default", { ...doc, title: "Aggiornato" });
+    const loaded = await store.load("default");
+    expect(loaded?.title).toBe("Aggiornato");
   });
 
   it("reports its backend label", () => {
