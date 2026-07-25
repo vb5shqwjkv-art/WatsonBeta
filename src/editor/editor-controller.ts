@@ -357,6 +357,75 @@ export class EditorController {
     return this.editor.chain().insertContentAt(pos, content).run();
   }
 
+  /**
+   * Append dictated text as a continuous flow. By default it CONTINUES the last
+   * paragraph (so speech reads as prose, not one line per sentence). `newBlock`
+   * starts a fresh paragraph and — per dictation convention ("a capo" ⇒ punto)
+   * — first closes the previous sentence with a period.
+   */
+  private appendText(text: string, newBlock: boolean): boolean {
+    if (this.isPristineEmpty()) {
+      return this.editor.commands.setContent(contentSpecToJSON({ text }), false);
+    }
+    const last = this.editor.state.doc.lastChild;
+    // Flow into the last paragraph — but never into a blank line reserved for an
+    // arrow (that space belongs to the arrow), which starts a new paragraph.
+    const canFlow =
+      !newBlock &&
+      !!last &&
+      last.type.name === "paragraph" &&
+      !last.attrs.reservedSpace;
+
+    if (canFlow) {
+      const existing = last!.textContent;
+      const needsSpace =
+        existing.length > 0 &&
+        !/\s$/.test(existing) &&
+        text.length > 0 &&
+        !/^[\s.,;:!?)]/.test(text);
+      // Just inside the last block's closing token → inline continuation.
+      const at = this.editor.state.doc.content.size - 1;
+      return this.editor
+        .chain()
+        .insertContentAt(at, (needsSpace ? " " : "") + text)
+        .run();
+    }
+
+    // Explicit break: finish the previous sentence before opening a new line.
+    if (newBlock && last && last.type.name === "paragraph") {
+      const t = last.textContent.trimEnd();
+      if (t.length > 0 && !/[.!?…:;]$/.test(t)) {
+        this.editor
+          .chain()
+          .insertContentAt(this.editor.state.doc.content.size - 1, ".")
+          .run();
+      }
+    }
+    return this.editor
+      .chain()
+      .insertContentAt(this.editor.state.doc.content.size, contentSpecToJSON({ text }))
+      .run();
+  }
+
+  /**
+   * Reserve horizontal room beside a word for a left/right arrow, so the arrow
+   * sits in real space instead of on top of the neighbouring words. Uses
+   * non-breaking spaces (regular spaces would collapse and leave no margin).
+   */
+  ensureArrowSideSpace(
+    blockId: string,
+    word: string,
+    occurrence: number,
+    direction: "left" | "right",
+    spaces: number,
+  ): void {
+    const range = findWordRange(this.editor.state.doc, word, occurrence, blockId);
+    if (!range) return;
+    const pad = " ".repeat(spaces);
+    const at = direction === "right" ? range.to : range.from;
+    this.editor.chain().insertContentAt(at, pad).run();
+  }
+
   /** Undo the last `steps` conversational turns (semantic undo). */
   undo(steps = 1): Result<number> {
     const restore = this.checkpoints.undo(steps);
@@ -418,6 +487,20 @@ export class EditorController {
 
     switch (op.type) {
       case "insert_content": {
+        // Plain text added at the end of the document FLOWS by default —
+        // continuing the current paragraph — so dictation reads as prose. A
+        // new line happens only on an explicit break (content.newBlock).
+        const flows =
+          op.content.as === undefined &&
+          !op.content.text.includes("\n\n") &&
+          (op.position.at === "documentEnd" || op.position.at === "cursor");
+        if (flows) {
+          if (!this.appendText(op.content.text, op.content.newBlock === true)) {
+            return err(appError("internal", "Insert failed."));
+          }
+          this.trackLastBlockAt(this.editor.state.doc.content.size);
+          return ok(label);
+        }
         const pos = this.resolveInsertPos(op.position);
         if (!pos.ok) return pos;
         const content = contentSpecToJSON(op.content);

@@ -81,6 +81,12 @@ export const ContentSpecSchema = z.object({
     .enum(enumValues(BlockType))
     .optional()
     .describe("Block type to wrap the text in; defaults to paragraph."),
+  newBlock: z
+    .boolean()
+    .optional()
+    .describe(
+      "Start a NEW line/paragraph for this text. When omitted/false, the text FLOWS ON, continuing the current line (dictation reads as prose, not a list). Set true only for an explicit 'vai a capo'/'nuovo paragrafo'.",
+    ),
 });
 
 export const MarkSpecSchema = z.discriminatedUnion("type", [

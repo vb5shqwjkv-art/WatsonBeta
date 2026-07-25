@@ -163,6 +163,17 @@ export function EditorWorkspace() {
         annotationManager.add(spec);
         if (spec.direction === "down") {
           controller.ensureArrowSpaceAfter(spec.blockId, 26);
+        } else if (
+          (spec.direction === "left" || spec.direction === "right") &&
+          spec.word
+        ) {
+          controller.ensureArrowSideSpace(
+            spec.blockId,
+            spec.word,
+            spec.occurrence,
+            spec.direction,
+            6,
+          );
         }
         setAnnotations([...annotationManager.all]);
       };

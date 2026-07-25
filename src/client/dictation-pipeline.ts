@@ -39,6 +39,9 @@ export interface DictationHooks {
 // ordinary blank line beneath it — never an inflated gap.
 const ARROW_SIZE_HINT_PX = 22;
 const ARROW_BLANK_LINE_PX = 26;
+// Non-breaking spaces reserved beside a word for a left/right arrow, so it sits
+// in real margin instead of on top of the neighbouring words.
+const ARROW_SIDE_SPACES = 6;
 
 export class DictationPipeline {
   constructor(
@@ -96,10 +99,21 @@ export class DictationPipeline {
               color: op.color ?? "#1a1a1a",
               sizePx: ARROW_SIZE_HINT_PX,
             });
-            // Reserve one ordinary numbered blank line below a down-arrow so it
-            // has room without overlapping the following text.
+            // Reserve room so the arrow never overlaps the text: a blank line
+            // below a down-arrow, or horizontal margin beside a side-arrow.
             if (op.direction === "down") {
               this.controller.ensureArrowSpaceAfter(blockId, ARROW_BLANK_LINE_PX);
+            } else if (
+              (op.direction === "left" || op.direction === "right") &&
+              op.word
+            ) {
+              this.controller.ensureArrowSideSpace(
+                blockId,
+                op.word,
+                op.occurrence,
+                op.direction,
+                ARROW_SIDE_SPACES,
+              );
             }
             annotationsChanged = true;
           }
