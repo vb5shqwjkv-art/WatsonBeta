@@ -8,10 +8,11 @@
 
 -- Documents ----------------------------------------------------------------
 create table if not exists public.documents (
-  id           text primary key,                 -- app-generated (doc_…)
+  id           text primary key,                 -- `<userId>:<docId>`
   owner_id     uuid not null references auth.users (id) on delete cascade,
   title        text not null default 'Untitled',
   content      jsonb not null default '{}'::jsonb, -- ProseMirror JSON
+  annotations  jsonb not null default '[]'::jsonb, -- overlay annotations
   doc_version  integer not null default 0,          -- optimistic concurrency
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now()
@@ -24,7 +25,9 @@ create table if not exists public.document_versions (
   id           text primary key,                 -- ver_…
   document_id  text not null references public.documents (id) on delete cascade,
   label        text not null,
+  title        text not null default 'Documento',
   content      jsonb not null,
+  annotations  jsonb not null default '[]'::jsonb,
   created_at   timestamptz not null default now()
 );
 

@@ -17,6 +17,7 @@ import type {
   ReplaceContentSchema,
   ReplySchema,
   RestoreVersionSchema,
+  SaveVersionSchema,
   SetAlignmentSchema,
   SetBlockTypeSchema,
   SetFontSizeSchema,
@@ -52,6 +53,7 @@ export type CreateListOp = z.infer<typeof CreateListSchema>;
 export type TransformContentOp = z.infer<typeof TransformContentSchema>;
 export type SummarizeOp = z.infer<typeof SummarizeSchema>;
 export type UndoOp = z.infer<typeof UndoSchema>;
+export type SaveVersionOp = z.infer<typeof SaveVersionSchema>;
 export type RestoreVersionOp = z.infer<typeof RestoreVersionSchema>;
 export type ExportDocumentOp = z.infer<typeof ExportDocumentSchema>;
 export type AnnotateOp = z.infer<typeof AnnotateSchema>;

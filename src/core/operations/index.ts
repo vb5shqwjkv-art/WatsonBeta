@@ -59,6 +59,8 @@ const NON_MUTATING = new Set<OperationType>([
   "export_document",
   "annotate",
   "clear_annotations",
+  "save_version",
+  "restore_version",
 ]);
 
 /** Whether this operation mutates the ProseMirror document. */
@@ -123,6 +125,8 @@ export function describeOperation(op: Operation): string {
       return `Summarize (${op.targetLength})`;
     case "undo":
       return `Undo ${op.steps} step(s)`;
+    case "save_version":
+      return `Save version${op.label ? ` "${op.label}"` : ""}`;
     case "restore_version":
       return `Restore version ${op.versionId}`;
     case "export_document":

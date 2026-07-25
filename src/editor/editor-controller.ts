@@ -552,10 +552,10 @@ export class EditorController {
         return res.ok ? ok(label) : res;
       }
 
+      case "save_version":
       case "restore_version":
-        return err(
-          appError("unsupported", "Version restore is wired in Phase 4 (storage)."),
-        );
+        // Versioning is a storage action handled by the pipeline.
+        return err(appError("unsupported", "Versioning is handled by the pipeline."));
 
       case "transform_content":
       case "summarize":

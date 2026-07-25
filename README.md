@@ -181,13 +181,32 @@ failures.
 - Triggered by the top-corner export control **or by voice** ("esporta in PDF",
   "salvalo come Word") via the `export_document` operation.
 
+**Auth, cloud persistence & version history — Phase 4 (done):**
+
+- **Persistence port is now async** with version history. `LocalDocumentStore`
+  (localStorage) and `SupabaseDocumentStore` (Postgres) are interchangeable; the
+  app picks Supabase for the signed-in user and localStorage otherwise, so it
+  runs fully in **local mode** when Supabase isn't configured.
+- **Supabase Auth** (email/password) via an inline sign-in bar, shown only when
+  configured. `supabase/schema.sql` defines documents + versions with
+  owner-scoped Row-Level Security.
+- **Version history**: save a named snapshot and restore any earlier one, from
+  the Versions menu or by voice (`save_version` / `restore_version`).
+- Autosave and annotations persist to whichever backend is active.
+
 Roadmap:
 
 - **Phase 3** — Harden the voice loop: OpenAI Realtime/Whisper provider for
   robustness, barge-in, faster endpointing.
-- **Phase 4** — Supabase Auth + move autosave/versions to the database.
 - **Phase 5** — Latency, ambiguity handling, advanced tables; more annotation
   kinds (labels, brackets) on the free-placement overlay.
+
+### Local vs cloud mode
+
+With no Supabase env vars the app runs in **local mode**: no account, autosave
+and versions in `localStorage`. Set `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_ANON_KEY` (and apply `supabase/schema.sql`) to enable
+sign-in and cloud persistence.
 
 ---
 

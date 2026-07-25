@@ -16,6 +16,7 @@ import {
   ReplaceContentSchema,
   ReplySchema,
   RestoreVersionSchema,
+  SaveVersionSchema,
   SetAlignmentSchema,
   SetBlockTypeSchema,
   SetFontSizeSchema,
@@ -150,6 +151,12 @@ const REGISTRY: readonly ToolSpec[] = [
     name: "clear_annotations",
     description: "Remove all arrows/annotations. Use for 'togli le frecce'.",
     schema: ClearAnnotationsSchema as unknown as OpObject,
+  },
+  {
+    name: "save_version",
+    description:
+      "Save a named snapshot (version) of the document. Use for 'salva una versione', 'salva questa bozza'. Pass a `label` if the user names it.",
+    schema: SaveVersionSchema as unknown as OpObject,
   },
   {
     name: "export_document",
