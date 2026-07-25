@@ -3,8 +3,9 @@
 import type { SttState } from "@/speech/types";
 
 /**
- * The controls dock: a small red "manual edit" toggle beside the large mic
- * button. The document is not hand-editable until manual edit is turned on.
+ * The controls dock: the large mic button, with a smaller dark-green "manual
+ * edit" toggle to its right. The document is not hand-editable until manual
+ * edit is turned on.
  */
 
 export interface MicButtonProps {
@@ -89,17 +90,6 @@ export function MicButton({
       <div className="mic-row">
         <button
           type="button"
-          className="edit-button"
-          data-active={manualEdit}
-          aria-pressed={manualEdit}
-          aria-label="Modifica manuale del testo"
-          title={manualEdit ? "Disattiva modifica manuale" : "Attiva modifica manuale"}
-          onClick={onToggleManualEdit}
-        >
-          <PencilIcon />
-        </button>
-        <button
-          type="button"
           className="mic-button"
           data-on={on}
           data-processing={processing}
@@ -112,6 +102,17 @@ export function MicButton({
         >
           {processing && <span className="mic-spinner" aria-hidden="true" />}
           <MicIcon />
+        </button>
+        <button
+          type="button"
+          className="edit-button"
+          data-active={manualEdit}
+          aria-pressed={manualEdit}
+          aria-label="Modifica manuale del testo"
+          title={manualEdit ? "Disattiva modifica manuale" : "Attiva modifica manuale"}
+          onClick={onToggleManualEdit}
+        >
+          <PencilIcon />
         </button>
       </div>
     </div>

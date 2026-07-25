@@ -432,7 +432,7 @@ body {
   align-items: center;
   gap: 14px;
 }
-/* Small, darker-red manual-edit toggle beside the mic. */
+/* Small, darker-green manual-edit toggle beside the mic. */
 .edit-button {
   pointer-events: auto;
   width: 46px;
@@ -443,8 +443,8 @@ body {
   display: grid;
   place-items: center;
   color: #fff;
-  background: #8f2318;
-  box-shadow: 0 6px 18px rgba(143, 35, 24, 0.4);
+  background: #0a5c3e;
+  box-shadow: 0 6px 18px rgba(10, 92, 62, 0.4);
   transition:
     transform 0.15s ease,
     background 0.2s ease,
@@ -454,12 +454,12 @@ body {
   transform: translateY(-2px);
 }
 .edit-button:focus-visible {
-  outline: 3px solid rgba(143, 35, 24, 0.5);
+  outline: 3px solid rgba(10, 92, 62, 0.5);
   outline-offset: 3px;
 }
 .edit-button[data-active="true"] {
-  background: #e0392b;
-  box-shadow: 0 0 0 4px rgba(224, 57, 43, 0.25);
+  background: #10935f;
+  box-shadow: 0 0 0 4px rgba(16, 147, 95, 0.25);
 }
 .mic-button {
   pointer-events: auto;

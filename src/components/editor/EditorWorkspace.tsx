@@ -162,7 +162,7 @@ export function EditorWorkspace() {
       w.__annotate = (spec: Omit<Annotation, "id">) => {
         annotationManager.add(spec);
         if (spec.direction === "down") {
-          controller.ensureArrowSpaceAfter(spec.blockId, spec.sizePx + 14);
+          controller.ensureArrowSpaceAfter(spec.blockId, 26);
         }
         setAnnotations([...annotationManager.all]);
       };

@@ -135,6 +135,10 @@ function placeArrows(
     const anchor = resolveAnchorRect(dom, a.blockId, a.word, a.occurrence);
     if (!anchor) continue;
 
+    // The arrow is sized to the text line it points at, so it always reads as
+    // part of the line and never looks oversized next to the words.
+    const size = anchor.height;
+
     const relLeft = anchor.left - sheetRect.left;
     const relTop = anchor.top - sheetRect.top;
     const centerX = relLeft + anchor.width / 2;
@@ -144,23 +148,23 @@ function placeArrows(
     let y: number;
     switch (a.direction) {
       case "down":
-        x = centerX - a.sizePx / 2;
+        x = centerX - size / 2;
         y = relTop + anchor.height + ARROW_GAP;
         break;
       case "up":
-        x = centerX - a.sizePx / 2;
-        y = relTop - a.sizePx - ARROW_GAP;
+        x = centerX - size / 2;
+        y = relTop - size - ARROW_GAP;
         break;
       case "left":
-        x = relLeft - a.sizePx - ARROW_GAP;
-        y = centerY - a.sizePx / 2;
+        x = relLeft - size - ARROW_GAP;
+        y = centerY - size / 2;
         break;
       case "right":
         x = relLeft + anchor.width + ARROW_GAP;
-        y = centerY - a.sizePx / 2;
+        y = centerY - size / 2;
         break;
     }
-    placed.push({ id: a.id, x, y, size: a.sizePx, color: a.color, direction: a.direction });
+    placed.push({ id: a.id, x, y, size, color: a.color, direction: a.direction });
   }
   return placed;
 }

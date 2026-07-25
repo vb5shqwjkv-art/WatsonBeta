@@ -35,9 +35,10 @@ export interface DictationHooks {
   onError?(message: string): void;
 }
 
-const BIG_ARROW_PX = 40;
-const NORMAL_ARROW_PX = 24;
-const ARROW_SPACE_PADDING = 14;
+// The arrow is drawn at the anchor line's height, so it needs only a single
+// ordinary blank line beneath it — never an inflated gap.
+const ARROW_SIZE_HINT_PX = 22;
+const ARROW_BLANK_LINE_PX = 26;
 
 export class DictationPipeline {
   constructor(
@@ -86,7 +87,6 @@ export class DictationPipeline {
         } else if (op.type === "annotate") {
           const blockId = this.controller.resolveBlockId(op.target);
           if (blockId) {
-            const sizePx = op.size === "big" ? BIG_ARROW_PX : NORMAL_ARROW_PX;
             this.annotations.add({
               kind: "arrow",
               blockId,
@@ -94,12 +94,12 @@ export class DictationPipeline {
               occurrence: op.occurrence,
               direction: op.direction,
               color: op.color ?? "#1a1a1a",
-              sizePx,
+              sizePx: ARROW_SIZE_HINT_PX,
             });
-            // Reserve a numbered blank line below so a down-arrow has room and
-            // never overlaps the following text.
+            // Reserve one ordinary numbered blank line below a down-arrow so it
+            // has room without overlapping the following text.
             if (op.direction === "down") {
-              this.controller.ensureArrowSpaceAfter(blockId, sizePx + ARROW_SPACE_PADDING);
+              this.controller.ensureArrowSpaceAfter(blockId, ARROW_BLANK_LINE_PX);
             }
             annotationsChanged = true;
           }
