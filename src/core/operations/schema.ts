@@ -42,6 +42,19 @@ export const TargetRefSchema = z.discriminatedUnion("kind", [
   z
     .object({ kind: z.literal("line"), line: z.number().int().min(1) })
     .describe("A block by its 1-based line number ('al rigo 4')."),
+  z
+    .object({
+      kind: z.literal("word"),
+      word: z.string(),
+      occurrence: z.number().int().min(1).default(1),
+      line: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("Restrict the search to this line's block."),
+    })
+    .describe("A specific word ('la parola osso'), optionally on a given line."),
 ]);
 
 /** An insertion point for new content. */

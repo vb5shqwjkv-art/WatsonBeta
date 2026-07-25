@@ -7,6 +7,7 @@ import { blockIdAt } from "@/editor/selection-projector";
 import {
   findBlockById,
   findBlockByLine,
+  findWordRange,
   resolveInsertPosition,
   resolveTargetRange,
 } from "@/editor/reference-resolver";
@@ -135,6 +136,29 @@ describe("reference resolver", () => {
     );
     expect(range.ok).toBe(false);
     if (!range.ok) expect(range.error.code).toBe("reference");
+  });
+
+  it("finds the range of a specific word inside a block", () => {
+    const d = doc([para("blk_x", "L'osso è un tessuto connettivo")]);
+    const range = findWordRange(d, "osso", 1, null);
+    expect(range).not.toBeNull();
+    if (range) {
+      expect(d.textBetween(range.from, range.to)).toBe("osso");
+      expect(range.blockId).toBe("blk_x");
+    }
+  });
+
+  it("returns null for a word that is absent", () => {
+    const d = doc([para("blk_x", "solo testo")]);
+    expect(findWordRange(d, "osso", 1, null)).toBeNull();
+  });
+
+  it("treats an invalid occurrence as the first (no position corruption)", () => {
+    const d = doc([para("blk_x", "prima osso seconda osso")]);
+    // An unparsed op may pass undefined; it must not resolve to a bad range.
+    const range = findWordRange(d, "osso", undefined as unknown as number, null);
+    expect(range).not.toBeNull();
+    if (range) expect(d.textBetween(range.from, range.to)).toBe("osso");
   });
 
   it("resolves a block by its line number", () => {

@@ -76,6 +76,52 @@ function blockRange(doc: PMNode, blockId: string): Result<DocRange> {
   });
 }
 
+/**
+ * Locate the range of a word within a text block. Positions map linearly for
+ * text blocks (paragraph/heading), where each character is one position after
+ * the block's opening token. `blockId` narrows the search to one block;
+ * otherwise the first block containing the word is used.
+ */
+export function findWordRange(
+  doc: PMNode,
+  word: string,
+  occurrence: number,
+  blockId: string | null,
+): DocRange | null {
+  const needle = word.toLowerCase();
+  if (needle.length === 0) return null;
+  // Defensive: never let a missing/invalid occurrence corrupt the position.
+  const times = Number.isInteger(occurrence) && occurrence >= 1 ? occurrence : 1;
+
+  const searchIn = (node: PMNode, blockStart: number): DocRange | null => {
+    if (!node.isTextblock) return null;
+    const haystack = node.textContent.toLowerCase();
+    let index = -1;
+    for (let n = 0; n < times; n++) {
+      index = haystack.indexOf(needle, index + 1);
+      if (index < 0) return null;
+    }
+    const from = blockStart + 1 + index; // +1: inside the block's opening token
+    return {
+      from,
+      to: from + word.length,
+      blockId: typeof node.attrs.blockId === "string" ? node.attrs.blockId : null,
+    };
+  };
+
+  if (blockId) {
+    const hit = findBlockById(doc, blockId);
+    return hit ? searchIn(hit.node, hit.pos) : null;
+  }
+
+  let result: DocRange | null = null;
+  doc.forEach((node, offset) => {
+    if (result) return;
+    result = searchIn(node, offset);
+  });
+  return result;
+}
+
 function lineRange(doc: PMNode, line: number): Result<DocRange> {
   const hit = findBlockByLine(doc, line);
   if (!hit) return err(appError("reference", `Line ${line} does not exist.`));
@@ -97,6 +143,14 @@ export function resolveTargetRange(
       return blockRange(doc, ref.blockId);
     case "line":
       return lineRange(doc, ref.line);
+    case "word": {
+      // A word without a line is resolvable purely; with a line, the controller
+      // translates it first (it owns the visual-line map).
+      const range = findWordRange(doc, ref.word, ref.occurrence, null);
+      return range
+        ? ok(range)
+        : err(appError("reference", `La parola "${ref.word}" non è stata trovata.`));
+    }
     case "last":
       if (!ctx.lastBlockId) {
         return err(appError("reference", "There is no recent block to target."));

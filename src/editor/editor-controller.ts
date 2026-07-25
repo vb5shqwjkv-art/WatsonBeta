@@ -21,6 +21,7 @@ import { buildIndex } from "./document-indexer";
 import { blockIdAt, projectSelection } from "./selection-projector";
 import {
   findBlockById,
+  findWordRange,
   resolveInsertPosition,
   resolveTargetRange,
   type DocRange,
@@ -156,15 +157,20 @@ export class EditorController {
 
   /** Resolve a target reference to the block id it points at (for annotations). */
   resolveBlockId(target: TargetRef): string | null {
+    const doc = this.editor.state.doc;
     switch (target.kind) {
       case "block":
-        return findBlockById(this.editor.state.doc, target.blockId) ? target.blockId : null;
+        return findBlockById(doc, target.blockId) ? target.blockId : null;
       case "line":
         return this.blockIdForVisualLine(target.line);
+      case "word": {
+        const blockId = target.line ? this.blockIdForVisualLine(target.line) : null;
+        return findWordRange(doc, target.word, target.occurrence, blockId)?.blockId ?? null;
+      }
       case "last":
         return this.lastBlockId;
       case "selection":
-        return blockIdAt(this.editor.state.doc, this.editor.state.selection.from);
+        return blockIdAt(doc, this.editor.state.selection.from);
       case "document":
         return null;
       default: {
@@ -425,7 +431,12 @@ export class EditorController {
       case "replace_content": {
         const range = this.resolveEditRange(op.target);
         if (!range.ok) return range;
-        const content = contentSpecToJSON(op.content);
+        // Replacing a single word is an INLINE edit → insert plain text, not a
+        // paragraph block (which would split the line).
+        const content =
+          op.target.kind === "word"
+            ? op.content.text
+            : contentSpecToJSON(op.content);
         if (
           !this.editor
             .chain()
@@ -611,6 +622,18 @@ export class EditorController {
         return err(appError("reference", `Il rigo ${target.line} non esiste.`));
       }
       return resolveTargetRange(doc, { kind: "block", blockId }, ctx);
+    }
+
+    // A word constrained to a visual line: map the line to its block, then find
+    // the word inside it (so "la parola osso al rigo 2" hits the right one).
+    if (target.kind === "word" && target.line !== undefined) {
+      const blockId = this.blockIdForVisualLine(target.line);
+      const range = blockId
+        ? findWordRange(doc, target.word, target.occurrence, blockId)
+        : null;
+      return range
+        ? ok(range)
+        : err(appError("reference", `La parola "${target.word}" non è stata trovata.`));
     }
 
     const direct = resolveTargetRange(doc, target, ctx);

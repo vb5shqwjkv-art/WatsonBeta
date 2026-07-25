@@ -77,7 +77,13 @@ export function EditorWorkspace() {
   const [exporting, setExporting] = useState(false);
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [user, setUser] = useState<AuthUser | null>(null);
+  const [manualEdit, setManualEdit] = useState(false);
   const supaConfigured = useRef(isSupabaseConfigured()).current;
+
+  // The document is hand-editable only while manual edit is on.
+  useEffect(() => {
+    editor?.setEditable(manualEdit);
+  }, [editor, manualEdit]);
 
   const currentPersisted = useCallback((): PersistedDocument | null => {
     const controller = controllerRef.current;
@@ -265,6 +271,8 @@ export function EditorWorkspace() {
         interim={interim}
         saved={saved}
         onToggle={toggleMic}
+        manualEdit={manualEdit}
+        onToggleManualEdit={() => setManualEdit((v) => !v)}
       />
     </div>
   );
