@@ -248,8 +248,14 @@ export const AnnotateSchema = z.object({
     .default(1)
     .describe("Which occurrence of the word within the block (usually 1)."),
   direction: z.enum(["down", "up", "left", "right"]).default("down"),
-  color: z.string().optional().describe("Arrow color as a CSS color; defaults to dark."),
-  size: z.enum(["normal", "big"]).default("normal"),
+  color: z
+    .string()
+    .optional()
+    .describe("Ignored: the arrow always inherits the anchored word's text color."),
+  size: z
+    .enum(["normal", "big"])
+    .default("normal")
+    .describe("Ignored: the arrow is always sized to the text line it points at."),
 });
 
 export const ClearAnnotationsSchema = z.object({

@@ -9,6 +9,8 @@ export interface AnchorRect {
   readonly top: number;
   readonly width: number;
   readonly height: number;
+  /** The computed text color at the anchor, so an arrow can match the word. */
+  readonly color: string;
 }
 
 /** Build a DOM Range over the Nth occurrence of `needle` inside `el`. */
@@ -66,12 +68,25 @@ export function resolveAnchorRect(
 
   if (word.trim().length === 0) {
     const r = block.getBoundingClientRect();
-    return { left: r.left, top: r.top, width: r.width, height: r.height };
+    return {
+      left: r.left,
+      top: r.top,
+      width: r.width,
+      height: r.height,
+      color: getComputedStyle(block).color,
+    };
   }
 
   const range = rangeForSubstring(block, word, occurrence);
   if (!range) return null;
   const r = range.getBoundingClientRect();
   if (r.width === 0 && r.height === 0) return null;
-  return { left: r.left, top: r.top, width: r.width, height: r.height };
+  // Read the color from the element the word actually renders in (its color
+  // mark's span when it has one, else the block), so the arrow matches it.
+  const host =
+    range.startContainer.nodeType === Node.TEXT_NODE
+      ? range.startContainer.parentElement
+      : (range.startContainer as HTMLElement);
+  const color = getComputedStyle(host ?? block).color;
+  return { left: r.left, top: r.top, width: r.width, height: r.height, color };
 }

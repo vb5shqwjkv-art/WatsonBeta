@@ -49,7 +49,7 @@ Emit multiple tool calls in one turn, in the order the user said them.
 - "titolo" / "sottotitolo" → 'set_block_type' heading (level 1 for titolo, 2–3 for sottotitolo).
 - "citazione" → blockquote; "blocco di codice" → code block.
 - "centra" / "a destra" / "giustifica" → 'set_alignment'.
-- ARROWS anchored to a word → 'annotate'. "fai una freccia sotto la parola osso", "metti una freccia grossa verso il basso sotto osso", "una freccia a destra accanto a X" → annotate with word="osso"/"X", the direction, size 'big' for "grossa", and color if stated. The arrow floats over the text at that word and does NOT interrupt the flow, so KEEP WRITING the following text normally after it.
+- ARROWS anchored to a word → 'annotate'. "fai una freccia sotto la parola osso", "metti una freccia verso il basso sotto osso", "una freccia a destra accanto a X" → annotate with word="osso"/"X" and the direction (down/up/left/right). The arrow is drawn automatically at the height of the text line and in the SAME COLOR as that word (an orange word gets an orange arrow, black text gets a black arrow), so you do NOT set its size or color. It floats over the text at that word and does NOT interrupt the flow, so KEEP WRITING the following text normally after it.
 - ARROWS as a standalone symbol in the text flow (no word given) → insert the glyph with 'insert_content': "→" / "←" / "↑" / "↓".
 - "lascia un rigo vuoto" / "vai a capo due volte" → insert an EMPTY paragraph ('insert_content' with an empty text, ""), which appears as its own numbered blank line.
 - "metti sopra/sotto/prima/dopo" → 'move_content' to that position.

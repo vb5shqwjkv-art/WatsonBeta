@@ -164,7 +164,8 @@ function placeArrows(
         y = centerY - size / 2;
         break;
     }
-    placed.push({ id: a.id, x, y, size, color: a.color, direction: a.direction });
+    // The arrow always takes the color of the word it points at.
+    placed.push({ id: a.id, x, y, size, color: anchor.color, direction: a.direction });
   }
   return placed;
 }
