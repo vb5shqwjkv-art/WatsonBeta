@@ -385,25 +385,36 @@ export class EditorController {
         !/^[\s.,;:!?)]/.test(text);
       // Just inside the last block's closing token → inline continuation.
       const at = this.editor.state.doc.content.size - 1;
-      return this.editor
-        .chain()
-        .insertContentAt(at, (needsSpace ? " " : "") + text)
-        .run();
+      return this.insertUnmarkedText(at, (needsSpace ? " " : "") + text);
     }
 
     // Explicit break: finish the previous sentence before opening a new line.
     if (newBlock && last && last.type.name === "paragraph") {
       const t = last.textContent.trimEnd();
       if (t.length > 0 && !/[.!?…:;]$/.test(t)) {
-        this.editor
-          .chain()
-          .insertContentAt(this.editor.state.doc.content.size - 1, ".")
-          .run();
+        this.insertUnmarkedText(this.editor.state.doc.content.size - 1, ".");
       }
     }
     return this.editor
       .chain()
       .insertContentAt(this.editor.state.doc.content.size, contentSpecToJSON({ text }))
+      .run();
+  }
+
+  /**
+   * Insert inline text and strip any marks it inherited from the boundary, so a
+   * flowing continuation (or an auto-inserted period) is plain and never picks
+   * up the colour/highlight of the preceding word.
+   */
+  private insertUnmarkedText(at: number, text: string): boolean {
+    if (text.length === 0) return true;
+    const ok = this.editor.chain().insertContentAt(at, text).run();
+    if (!ok) return false;
+    return this.editor
+      .chain()
+      .setTextSelection({ from: at, to: at + text.length })
+      .unsetAllMarks()
+      .setTextSelection(at + text.length)
       .run();
   }
 
@@ -498,7 +509,7 @@ export class EditorController {
           if (!this.appendText(op.content.text, op.content.newBlock === true)) {
             return err(appError("internal", "Insert failed."));
           }
-          this.trackLastBlockAt(this.editor.state.doc.content.size);
+          this.trackLastChild();
           return ok(label);
         }
         const pos = this.resolveInsertPos(op.position);
@@ -807,6 +818,14 @@ export class EditorController {
     // +1 lands inside the just-inserted block rather than on the boundary
     // between it and the previous block.
     const id = blockIdAt(this.editor.state.doc, Math.min(pos + 1, size));
+    if (id) this.lastBlockId = id;
+  }
+
+  /** Remember the document's last top-level block as the `@last` target. */
+  private trackLastChild(): void {
+    const last = this.editor.state.doc.lastChild;
+    const id =
+      last && typeof last.attrs.blockId === "string" ? last.attrs.blockId : null;
     if (id) this.lastBlockId = id;
   }
 }
