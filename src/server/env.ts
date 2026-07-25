@@ -23,6 +23,12 @@ export const serverEnv = {
     reasoningModel: () => optional("OPENAI_REASONING_MODEL", "gpt-4o"),
     realtimeModel: () =>
       optional("OPENAI_REALTIME_MODEL", "gpt-4o-realtime-preview"),
+    /**
+     * Optional override of the API base URL. Lets the app talk to any
+     * OpenAI-compatible endpoint — e.g. a free tier (Groq, Google Gemini) or a
+     * local model (Ollama) — without changing code. Undefined ⇒ real OpenAI.
+     */
+    baseURL: () => process.env.OPENAI_BASE_URL || undefined,
   },
   supabase: {
     url: () => required("NEXT_PUBLIC_SUPABASE_URL"),

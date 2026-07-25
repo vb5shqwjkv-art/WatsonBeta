@@ -90,6 +90,7 @@ function safeJsonParse(raw: string): unknown {
 export function createOpenAIReasoningProvider(
   apiKey: string,
   model: string,
+  baseURL?: string,
 ): OpenAIReasoningProvider {
-  return new OpenAIReasoningProvider(new OpenAI({ apiKey }), model);
+  return new OpenAIReasoningProvider(new OpenAI({ apiKey, baseURL }), model);
 }

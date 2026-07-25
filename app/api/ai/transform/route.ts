@@ -48,7 +48,10 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   try {
-    const client = new OpenAI({ apiKey: serverEnv.openai.apiKey() });
+    const client = new OpenAI({
+      apiKey: serverEnv.openai.apiKey(),
+      baseURL: serverEnv.openai.baseURL(),
+    });
     const model = serverEnv.openai.reasoningModel();
 
     const text =

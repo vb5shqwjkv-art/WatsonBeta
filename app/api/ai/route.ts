@@ -86,6 +86,7 @@ export async function POST(req: Request): Promise<Response> {
     const provider = createOpenAIReasoningProvider(
       serverEnv.openai.apiKey(),
       serverEnv.openai.reasoningModel(),
+      serverEnv.openai.baseURL(),
     );
     const engine = new ReasoningEngine(provider);
 
