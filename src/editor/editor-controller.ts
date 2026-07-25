@@ -28,6 +28,7 @@ import {
   type ResolveContext,
 } from "./reference-resolver";
 import {
+  buildComparisonColumnJSON,
   buildComparisonJSON,
   buildListJSON,
   buildTableJSON,
@@ -726,6 +727,9 @@ export class EditorController {
       case "modify_table":
         return this.applyModifyTable(op.tableId, op);
 
+      case "modify_comparison":
+        return this.applyModifyComparison(op.comparisonId, op);
+
       case "undo": {
         const res = this.undo(op.steps);
         return res.ok ? ok(label) : res;
@@ -877,6 +881,51 @@ export class EditorController {
         newJSON,
       )
       .run();
+    return ok(describeOperation(op));
+  }
+
+  /** Add or remove a column of a comparison, preserving the other columns. */
+  private applyModifyComparison(
+    comparisonId: string,
+    op: Extract<Operation, { type: "modify_comparison" }>,
+  ): Result<string> {
+    const doc = this.editor.state.doc;
+    const hit = findBlockById(doc, comparisonId);
+    if (!hit || hit.node.type.name !== "comparison") {
+      return err(appError("reference", "La comparazione non è stata trovata."));
+    }
+
+    // Serialize existing columns so their content is preserved on rebuild.
+    const compJSON = hit.node.toJSON() as {
+      type: string;
+      attrs?: Record<string, unknown>;
+      content?: JSONContent[];
+    };
+    const columns = [...(compJSON.content ?? [])];
+
+    if (op.operation.op === "addColumn") {
+      if (columns.length >= 10) {
+        return err(appError("unsupported", "Una comparazione ha al massimo 10 colonne."));
+      }
+      const index =
+        op.operation.at !== undefined
+          ? Math.min(Math.max(op.operation.at - 1, 0), columns.length)
+          : columns.length;
+      columns.splice(index, 0, buildComparisonColumnJSON(op.operation.title));
+    } else {
+      if (columns.length <= 2) {
+        return err(appError("unsupported", "Una comparazione ha almeno 2 colonne."));
+      }
+      const index = Math.min(Math.max(op.operation.at - 1, 0), columns.length - 1);
+      columns.splice(index, 1);
+    }
+
+    compJSON.content = columns;
+    this.editor
+      .chain()
+      .insertContentAt({ from: hit.pos, to: hit.pos + hit.node.nodeSize }, compJSON)
+      .run();
+    this.lastBlockId = comparisonId;
     return ok(describeOperation(op));
   }
 

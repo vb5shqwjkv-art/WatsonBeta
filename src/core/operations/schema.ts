@@ -228,6 +228,31 @@ export const CreateComparisonSchema = z.object({
     .describe("The heading of each column, in order — the items being compared."),
 });
 
+/** Add or remove a column of an existing comparison. */
+export const ComparisonOpSchema = z.discriminatedUnion("op", [
+  z
+    .object({
+      op: z.literal("addColumn"),
+      at: z
+        .number()
+        .int()
+        .min(1)
+        .optional()
+        .describe("1-based position to insert at; omit to append at the end."),
+      title: z.string().optional().describe("Heading for the new column."),
+    })
+    .describe("Add a column ('aggiungi una colonna/un argomento')."),
+  z
+    .object({ op: z.literal("deleteColumn"), at: z.number().int().min(1) })
+    .describe("Remove the column at this 1-based position ('togli la colonna N')."),
+]);
+
+export const ModifyComparisonSchema = z.object({
+  type: z.literal("modify_comparison"),
+  comparisonId: z.string(),
+  operation: ComparisonOpSchema,
+});
+
 /* ── Generative operations (re-invoke the LLM on a focused region) ───────── */
 
 export const TransformContentSchema = z.object({
@@ -314,6 +339,7 @@ export const OperationSchema = z.discriminatedUnion("type", [
   ModifyTableSchema,
   CreateListSchema,
   CreateComparisonSchema,
+  ModifyComparisonSchema,
   TransformContentSchema,
   SummarizeSchema,
   AnnotateSchema,
@@ -338,6 +364,7 @@ export const OPERATION_TYPES = [
   "modify_table",
   "create_list",
   "create_comparison",
+  "modify_comparison",
   "transform_content",
   "summarize",
   "annotate",

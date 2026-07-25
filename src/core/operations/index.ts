@@ -84,6 +84,8 @@ export function isDestructive(op: Operation): boolean {
       return (
         op.operation.op === "deleteRow" || op.operation.op === "deleteColumn"
       );
+    case "modify_comparison":
+      return op.operation.op === "deleteColumn";
     default:
       return false;
   }
@@ -120,6 +122,8 @@ export function describeOperation(op: Operation): string {
       return `Create ${op.listKind} list (${op.items.length} items)`;
     case "create_comparison":
       return `Create comparison (${op.columns} columns)`;
+    case "modify_comparison":
+      return `Comparison: ${op.operation.op}`;
     case "transform_content":
       return `Transform: ${op.instruction}`;
     case "summarize":

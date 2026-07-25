@@ -13,6 +13,7 @@ import {
   ExportDocumentSchema,
   FormatTextSchema,
   InsertContentSchema,
+  ModifyComparisonSchema,
   ModifyTableSchema,
   MoveContentSchema,
   ReplaceContentSchema,
@@ -122,6 +123,12 @@ const REGISTRY: readonly ToolSpec[] = [
     description:
       "Lay the page out into N equal side-by-side COLUMNS (2–10) to compare things — NOT a table. Use for 'compariamo X e Y', 'facciamo il confronto tra questi argomenti', 'metti a confronto quattro cose'. Set columns to the count and titles to their names. Afterwards, write into a specific column via insert_content with position { at: 'inColumn', columnId } so text stays within that column.",
     schema: CreateComparisonSchema as unknown as OpObject,
+  },
+  {
+    name: "modify_comparison",
+    description:
+      "Add or remove a column of an existing comparison, by its comparisonId (from the index). Use for 'aggiungi una colonna/un argomento al confronto' (addColumn, optional title and 1-based position) and 'togli la colonna N'/'elimina l'ultima colonna' (deleteColumn at the 1-based position).",
+    schema: ModifyComparisonSchema as unknown as OpObject,
   },
   {
     name: "transform_content",
