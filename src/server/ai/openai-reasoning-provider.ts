@@ -49,13 +49,30 @@ export class OpenAIReasoningProvider implements ReasoningProvider {
     const choice = completion.choices[0];
     const rawCalls = choice?.message.tool_calls ?? [];
 
-    const toolCalls: RawToolCall[] = rawCalls
-      .filter((c) => c.type === "function")
-      .map((c) => ({
-        id: c.id,
-        name: c.function.name,
-        arguments: safeJsonParse(c.function.arguments),
-      }));
+    // Key off the presence of a function name, not the `type` discriminant:
+    // some OpenAI-compatible providers (e.g. Google Gemini) omit or vary `type`
+    // on tool calls, which would otherwise drop every call and apply nothing.
+    const toolCalls: RawToolCall[] = [];
+    for (const c of rawCalls) {
+      const fn = (c as { function?: { name?: string; arguments?: string } })
+        .function;
+      if (!fn?.name) continue;
+      toolCalls.push({
+        id: (c as { id?: string }).id ?? fn.name,
+        name: fn.name,
+        arguments: safeJsonParse(fn.arguments ?? "{}"),
+      });
+    }
+
+    if (toolCalls.length === 0) {
+      // Diagnostic: reveals whether the model refused, replied in text, or
+      // returned calls we could not read (visible in the `npm run dev` terminal).
+      logger.warn("model returned no usable tool calls", {
+        finishReason: choice?.finish_reason ?? null,
+        rawToolCalls: rawCalls.length,
+        message: choice?.message.content?.slice(0, 300) ?? null,
+      });
+    }
 
     return {
       toolCalls,
