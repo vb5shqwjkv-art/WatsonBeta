@@ -33,7 +33,21 @@ export async function requestReasoning(
     body: JSON.stringify(body),
     signal,
   });
-  if (!res.ok) throw new Error(`Reasoning request failed (${res.status}).`);
+  if (!res.ok) {
+    const detail = await res
+      .json()
+      .then((d: { detail?: unknown; error?: unknown }) =>
+        typeof d.detail === "string"
+          ? d.detail
+          : typeof d.error === "string"
+            ? d.error
+            : "",
+      )
+      .catch(() => "");
+    throw new Error(
+      `Reasoning request failed (${res.status})${detail ? `: ${detail}` : ""}`,
+    );
+  }
 
   const data: unknown = await res.json();
   const record = (data ?? {}) as Record<string, unknown>;

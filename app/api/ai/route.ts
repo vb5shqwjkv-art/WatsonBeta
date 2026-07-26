@@ -40,6 +40,12 @@ const IndexedBlockSchema = z.object({
       itemCount: z.number(),
     })
     .optional(),
+  comparison: z
+    .object({
+      comparisonId: z.string(),
+      columns: z.array(z.object({ columnId: z.string(), title: z.string() })),
+    })
+    .optional(),
 });
 
 const RequestSchema = z.object({
@@ -102,11 +108,13 @@ export async function POST(req: Request): Promise<Response> {
 
     return NextResponse.json(outcome);
   } catch (error) {
-    logger.error("reasoning endpoint failed", {
-      error: error instanceof Error ? error.message : String(error),
-    });
+    const detail = error instanceof Error ? error.message : String(error);
+    logger.error("reasoning endpoint failed", { error: detail });
+    // Surface the underlying cause: this is a single-user, self-hosted app and
+    // the detail (e.g. a provider's schema/auth message) is what makes a
+    // misconfiguration debuggable from the browser.
     return NextResponse.json(
-      { error: "Reasoning failed." },
+      { error: "Reasoning failed.", detail },
       { status: 502 },
     );
   }

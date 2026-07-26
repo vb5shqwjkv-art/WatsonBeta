@@ -78,6 +78,7 @@ export function EditorWorkspace() {
   const [annotations, setAnnotations] = useState<Annotation[]>([]);
   const [user, setUser] = useState<AuthUser | null>(null);
   const [manualEdit, setManualEdit] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const supaConfigured = useRef(isSupabaseConfigured()).current;
 
   // The document is hand-editable only while manual edit is on.
@@ -153,6 +154,8 @@ export function EditorWorkspace() {
           setAnnotations([...annotationManager.all]);
           saveDoc();
         },
+        onApplied: () => setErrorMessage(null),
+        onError: (message) => setErrorMessage(message),
       },
     );
 
@@ -284,6 +287,7 @@ export function EditorWorkspace() {
         onToggle={toggleMic}
         manualEdit={manualEdit}
         onToggleManualEdit={() => setManualEdit((v) => !v)}
+        errorMessage={errorMessage}
       />
     </div>
   );

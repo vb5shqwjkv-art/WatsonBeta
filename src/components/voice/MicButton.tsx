@@ -18,6 +18,7 @@ export interface MicButtonProps {
   onToggle: () => void;
   manualEdit: boolean;
   onToggleManualEdit: () => void;
+  errorMessage?: string | null;
 }
 
 function MicIcon() {
@@ -63,6 +64,7 @@ export function MicButton({
   onToggle,
   manualEdit,
   onToggleManualEdit,
+  errorMessage,
 }: MicButtonProps) {
   const label = !supported
     ? "Dettatura non supportata in questo browser"
@@ -70,21 +72,28 @@ export function MicButton({
       ? "Ferma la dettatura"
       : "Avvia la dettatura";
 
-  const status = !supported
-    ? "Browser non supportato"
-    : processing
-      ? "Sto scrivendo…"
-      : on
-        ? interim || "Ti ascolto…"
-        : manualEdit
-          ? "Modifica manuale attiva"
-          : saved
-            ? "Salvato ✓"
-            : "Tocca per parlare";
+  const status = errorMessage
+    ? errorMessage
+    : !supported
+      ? "Browser non supportato"
+      : processing
+        ? "Sto scrivendo…"
+        : on
+          ? interim || "Ti ascolto…"
+          : manualEdit
+            ? "Modifica manuale attiva"
+            : saved
+              ? "Salvato ✓"
+              : "Tocca per parlare";
 
   return (
     <div className="mic-dock">
-      <div className="mic-status" data-active={on || processing || saved || manualEdit}>
+      <div
+        className="mic-status"
+        data-active={!!errorMessage || on || processing || saved || manualEdit}
+        data-error={!!errorMessage}
+        title={errorMessage ?? undefined}
+      >
         {status}
       </div>
       <div className="mic-row">

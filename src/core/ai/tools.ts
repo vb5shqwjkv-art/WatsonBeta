@@ -185,6 +185,33 @@ export const TOOL_NAMES = new Set(REGISTRY.map((t) => t.name));
 let cachedTools: readonly ToolDefinition[] | null = null;
 
 /**
+ * Keys that some providers' function-schema validators reject (notably Google
+ * Gemini's OpenAI-compatible endpoint). They are optional for OpenAI too, so
+ * stripping them keeps one schema working across providers. Server-side
+ * `parseOperation` re-applies every default, so dropping `default` is safe.
+ */
+const UNSUPPORTED_SCHEMA_KEYS = new Set([
+  "additionalProperties",
+  "default",
+  "$schema",
+  "definitions",
+]);
+
+/** Recursively remove keys unsupported by stricter function-schema validators. */
+function sanitizeSchema(value: JsonValue): JsonValue {
+  if (Array.isArray(value)) return value.map(sanitizeSchema);
+  if (value && typeof value === "object") {
+    const out: Record<string, JsonValue> = {};
+    for (const [key, v] of Object.entries(value)) {
+      if (UNSUPPORTED_SCHEMA_KEYS.has(key)) continue;
+      out[key] = sanitizeSchema(v as JsonValue);
+    }
+    return out;
+  }
+  return value;
+}
+
+/**
  * Build the vendor-neutral tool definitions handed to a {@link ReasoningProvider}.
  * Memoized — the schemas are static.
  */
@@ -199,7 +226,7 @@ export function buildOperationTools(): readonly ToolDefinition[] {
     return {
       name: spec.name,
       description: spec.description,
-      parameters: jsonSchema,
+      parameters: sanitizeSchema(jsonSchema),
     } satisfies ToolDefinition;
   });
   return cachedTools;

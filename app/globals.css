@@ -456,6 +456,12 @@ body {
 .mic-status[data-active="true"] {
   opacity: 1;
 }
+.mic-status[data-error="true"] {
+  color: #fff;
+  background: #b91c1c;
+  border-color: #b91c1c;
+  max-width: min(90vw, 640px);
+}
 .mic-row {
   display: flex;
   align-items: center;
